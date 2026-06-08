@@ -12,9 +12,12 @@ const App = () => (
         position="top-right"
         toastOptions={{
           style: {
-            background: '#1e293b',
-            color: '#f1f5f9',
-            border: '1px solid rgba(255,255,255,0.08)',
+            background: '#ffffff',
+            color: '#111827',
+            border: '1px solid #E2E8F0',
+            boxShadow: '0 4px 16px rgba(109,40,217,0.10)',
+            fontFamily: 'Inter, system-ui, sans-serif',
+            fontSize: '0.9rem',
           },
         }}
       />
