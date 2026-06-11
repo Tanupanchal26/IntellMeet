@@ -1,18 +1,11 @@
 import api from './api';
 
-export const authService = {
-  login: async (credentials: any) => {
-    return api.post('/auth/login', credentials);
-  },
-  register: async (userData: any) => {
-    return api.post('/auth/register', userData);
-  },
-  getProfile: async () => {
-    return api.get('/user/profile');
-  },
-  updateProfile: async (profileData: any) => {
-    return api.put('/user/profile', profileData);
-  }
-};
+export interface LoginPayload { email: string; password: string; }
+export interface RegisterPayload { name: string; email: string; password: string; }
 
-export default authService;
+export const authService = {
+  login: (data: LoginPayload) => api.post('/auth/login', data),
+  register: (data: RegisterPayload) => api.post('/auth/signup', data),
+  logout: () => api.post('/auth/logout'),
+  me: () => api.get('/users/me'),
+};

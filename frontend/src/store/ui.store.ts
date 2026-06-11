@@ -1,19 +1,29 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+
+type Panel = 'chat' | 'participants' | 'ai' | 'notes';
 
 interface UIState {
-  sidebarOpen: boolean;
-  activeMeetingPanel: 'chat' | 'participants' | 'transcript' | 'actions';
-  theme: 'light' | 'dark';
+  sidebarCollapsed: boolean;
+  mobileSidebarOpen: boolean;
+  activeMeetingPanel: Panel;
+  theme: 'dark';
   toggleSidebar: () => void;
-  setActiveMeetingPanel: (panel: 'chat' | 'participants' | 'transcript' | 'actions') => void;
-  toggleTheme: () => void;
+  setMobileSidebar: (v: boolean) => void;
+  setActiveMeetingPanel: (p: Panel) => void;
 }
 
-export const useUIStore = create<UIState>((set) => ({
-  sidebarOpen: true,
-  activeMeetingPanel: 'chat',
-  theme: 'light',
-  toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
-  setActiveMeetingPanel: (panel) => set({ activeMeetingPanel: panel }),
-  toggleTheme: () => set((state) => ({ theme: state.theme === 'light' ? 'dark' : 'light' }))
-}));
+export const useUIStore = create<UIState>()(
+  persist(
+    (set) => ({
+      sidebarCollapsed: false,
+      mobileSidebarOpen: false,
+      activeMeetingPanel: 'chat',
+      theme: 'dark',
+      toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
+      setMobileSidebar: (v) => set({ mobileSidebarOpen: v }),
+      setActiveMeetingPanel: (p) => set({ activeMeetingPanel: p }),
+    }),
+    { name: 'ui-store', partialize: (s) => ({ sidebarCollapsed: s.sidebarCollapsed }) }
+  )
+);

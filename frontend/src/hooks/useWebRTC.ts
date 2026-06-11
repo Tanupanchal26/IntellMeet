@@ -1,69 +1,38 @@
-import { useEffect, useRef, useState } from 'react';
-import { createPeerConnection } from '../utils/webrtc';
+import { useEffect, useRef, useCallback } from 'react';
+import { useMeetingStore } from '../store/meeting.store';
 
-export const useWebRTC = (roomId: string) => {
-  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
-  const [remoteStreams, setRemoteStreams] = useState<Record<string, MediaStream>>({});
-  const peerConnectionsRef = useRef<Record<string, RTCPeerConnection>>({});
+interface WebRTCConfig { roomId: string; userId: string; }
+
+export const useWebRTC = ({ roomId, userId }: WebRTCConfig) => {
+  const localStreamRef = useRef<MediaStream | null>(null);
+  const peersRef = useRef<Map<string, RTCPeerConnection>>(new Map());
+  const { isVideoOff, isMuted } = useMeetingStore();
+
+  const getLocalStream = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      localStreamRef.current = stream;
+      return stream;
+    } catch {
+      return null;
+    }
+  }, []);
 
   useEffect(() => {
-    async function startMedia() {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-        setLocalStream(stream);
-      } catch (err) {
-        console.error('Failed to get local media stream', err);
-      }
-    }
-    startMedia();
-
+    getLocalStream();
     return () => {
-      // Cleanup peer connections and local stream tracks
-      if (localStream) {
-        localStream.getTracks().forEach((track) => track.stop());
-      }
-      Object.values(peerConnectionsRef.current).forEach((pc) => pc.close());
-      peerConnectionsRef.current = {};
+      localStreamRef.current?.getTracks().forEach(t => t.stop());
+      peersRef.current.forEach(pc => pc.close());
     };
-  }, [roomId]);
+  }, [getLocalStream]);
 
-  const addPeer = (peerId: string) => {
-    const pc = createPeerConnection(
-      (event) => {
-        if (event.candidate) {
-          // Send ICE Candidate via websocket signalling channel
-        }
-      },
-      (event) => {
-        const stream = event.streams[0];
-        if (stream) {
-          setRemoteStreams((prev) => ({ ...prev, [peerId]: stream }));
-        }
-      }
-    );
+  useEffect(() => {
+    localStreamRef.current?.getAudioTracks().forEach(t => { t.enabled = !isMuted; });
+  }, [isMuted]);
 
-    if (localStream) {
-      localStream.getTracks().forEach((track) => pc.addTrack(track, localStream));
-    }
+  useEffect(() => {
+    localStreamRef.current?.getVideoTracks().forEach(t => { t.enabled = !isVideoOff; });
+  }, [isVideoOff]);
 
-    peerConnectionsRef.current[peerId] = pc;
-    return pc;
-  };
-
-  const removePeer = (peerId: string) => {
-    const pc = peerConnectionsRef.current[peerId];
-    if (pc) {
-      pc.close();
-      delete peerConnectionsRef.current[peerId];
-    }
-    setRemoteStreams((prev) => {
-      const copy = { ...prev };
-      delete copy[peerId];
-      return copy;
-    });
-  };
-
-  return { localStream, remoteStreams, addPeer, removePeer };
+  return { localStreamRef, peersRef, getLocalStream };
 };
-
-export default useWebRTC;

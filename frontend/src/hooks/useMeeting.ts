@@ -1,40 +1,39 @@
-import { useEffect, useState } from 'react';
-import { getSocket } from '../utils/socket';
+import { useEffect } from 'react';
+import { useMeetingStore } from '../store/meeting.store';
+import { useAIStore } from '../store/ai.store';
+import { useSocket } from './useSocket';
+import { meetingService } from '../services/meeting.service';
+import toast from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
+import { ROUTES } from '../utils/constants';
 
-export const useMeeting = (roomId: string) => {
-  const [participants, setParticipants] = useState<any[]>([]);
-  const [activeSpeaker, setActiveSpeaker] = useState<string | null>(null);
-  const [isMuted, setIsMuted] = useState(false);
-  const [isVideoOff, setIsVideoOff] = useState(false);
+export const useMeeting = (roomId?: string) => {
+  const socket = useSocket();
+  const navigate = useNavigate();
+  const { addParticipant, removeParticipant, setInCall, resetMeeting } = useMeetingStore();
+  const { appendTranscript } = useAIStore();
 
   useEffect(() => {
-    const socket = getSocket();
-
-    socket.emit('meeting:join', { roomId });
-
-    socket.on('meeting:participants', (list: any[]) => {
-      setParticipants(list);
-    });
-
-    socket.on('meeting:speaker', (speakerId: string) => {
-      setActiveSpeaker(speakerId);
-    });
-
+    if (!socket || !roomId) return;
+    socket.emit('meeting:join', roomId);
+    socket.on('meeting:user-joined', (data) => addParticipant(data));
+    socket.on('meeting:user-left', ({ socketId }) => removeParticipant(socketId));
+    socket.on('ai:transcript', (chunk: string) => appendTranscript(chunk));
+    setInCall(true);
     return () => {
-      socket.emit('meeting:leave', { roomId });
-      socket.off('meeting:participants');
-      socket.off('meeting:speaker');
+      socket.off('meeting:user-joined');
+      socket.off('meeting:user-left');
+      socket.off('ai:transcript');
     };
-  }, [roomId]);
+  }, [socket, roomId, addParticipant, removeParticipant, setInCall, appendTranscript]);
 
-  return {
-    participants,
-    activeSpeaker,
-    isMuted,
-    isVideoOff,
-    setIsMuted,
-    setIsVideoOff
+  const leaveMeeting = async (meetingId?: string) => {
+    socket?.emit('meeting:leave', roomId);
+    if (meetingId) await meetingService.end(meetingId).catch(() => {});
+    resetMeeting();
+    toast('You left the meeting');
+    navigate(ROUTES.LOBBY);
   };
-};
 
-export default useMeeting;
+  return { leaveMeeting };
+};

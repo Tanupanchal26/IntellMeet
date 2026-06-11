@@ -1,18 +1,60 @@
 import api from './api';
 
-export const aiService = {
-  getTranscript: async (meetingId: string) => {
-    return api.get(`/ai/transcript/${meetingId}`);
-  },
-  getSummary: async (meetingId: string) => {
-    return api.get(`/ai/summary/${meetingId}`);
-  },
-  getActionItems: async (meetingId: string) => {
-    return api.get(`/ai/action-items/${meetingId}`);
-  },
-  generateSmartReport: async (meetingId: string) => {
-    return api.post(`/ai/report/${meetingId}`);
-  }
-};
+export interface ActionItem {
+  text: string;
+  assignee: string | null;
+  dueDate: string | null;
+  priority: 'high' | 'medium' | 'low';
+  done?: boolean;
+}
 
-export default aiService;
+export interface AIResult {
+  meeting: string;
+  transcript: string;
+  summary: string;
+  minutes: string;
+  actionItems: ActionItem[];
+}
+
+export interface SearchResult {
+  id: string;
+  title: string;
+  date: string;
+  score: number;
+}
+
+export interface GeneratedTask {
+  title: string;
+  description: string;
+  priority: 'high' | 'medium' | 'low';
+  estimatedHours: number | null;
+}
+
+export const aiService = {
+  getResult:       (meetingId: string) =>
+    api.get<AIResult>(`/ai/${meetingId}`),
+
+  generateSummary: (meetingId: string) =>
+    api.post<{ summary: string }>(`/ai/${meetingId}/summary`),
+
+  getTranscript:   (meetingId: string) =>
+    api.get<{ transcript: string }>(`/ai/${meetingId}/transcript`),
+
+  saveTranscript:  (meetingId: string, transcript: string) =>
+    api.post(`/ai/${meetingId}/transcript`, { transcript }),
+
+  getActionItems:  (meetingId: string) =>
+    api.get<{ actionItems: ActionItem[] }>(`/ai/${meetingId}/action-items`),
+
+  generateMinutes: (meetingId: string) =>
+    api.post<{ minutes: string }>(`/ai/${meetingId}/minutes`),
+
+  assistantChat:   (meetingId: string, message: string, history: { role: string; content: string }[] = []) =>
+    api.post<{ reply: string }>(`/ai/${meetingId}/assistant`, { message, history }),
+
+  generateTasks:   (meetingId: string, prompt?: string) =>
+    api.post<{ tasks: GeneratedTask[] }>(`/ai/${meetingId}/tasks`, { prompt }),
+
+  searchMeetings:  (query: string) =>
+    api.get<{ results: SearchResult[] }>('/ai/search', { params: { q: query } }),
+};

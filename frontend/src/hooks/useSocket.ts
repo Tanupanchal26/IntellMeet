@@ -1,23 +1,25 @@
 import { useEffect, useRef } from 'react';
-import { getSocket } from '../utils/socket';
+import { io, Socket } from 'socket.io-client';
+import { SOCKET_URL } from '../utils/constants';
+import { useAuthStore } from '../store/auth.store';
 
-/**
- * Subscribe to a socket event and auto-clean on unmount.
- * @param event The event name to listen to
- * @param handler The callback function
- */
-export const useSocket = (event: string, handler: (...args: any[]) => void): void => {
-  const handlerRef = useRef(handler);
-  handlerRef.current = handler;
+let socketInstance: Socket | null = null;
+
+export const useSocket = () => {
+  const { token } = useAuthStore();
+  const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
-    const socket = getSocket();
-    const listener = (...args: any[]) => handlerRef.current(...args);
-    socket.on(event, listener);
-    return () => {
-      socket.off(event, listener);
-    };
-  }, [event]);
-};
+    if (!socketInstance) {
+      socketInstance = io(SOCKET_URL, {
+        auth: { token },
+        autoConnect: true,
+        reconnectionAttempts: 5,
+      });
+    }
+    socketRef.current = socketInstance;
+    return () => {};
+  }, [token]);
 
-export default useSocket;
+  return socketInstance!;
+};
