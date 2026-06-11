@@ -1,7 +1,13 @@
 module.exports = (io, socket) => {
-  socket.on('notification:subscribe', (userId) => socket.join(`user:${userId}`));
+  // Auto-join user's personal room if authenticated
+  if (socket.user?.id) {
+    socket.join(`user:${socket.user.id}`);
+  }
 
-  const sendNotification = (userId, payload) => io.to(`user:${userId}`).emit('notification', payload);
-
-  socket.sendNotification = sendNotification;
+  // Explicit subscribe (for clients that connect before auth resolves)
+  socket.on('notification:subscribe', (userId) => {
+    if (socket.user?.id && socket.user.id.toString() === userId.toString()) {
+      socket.join(`user:${userId}`);
+    }
+  });
 };

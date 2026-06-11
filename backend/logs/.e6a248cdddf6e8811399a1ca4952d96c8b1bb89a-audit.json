@@ -1,0 +1,15 @@
+{
+    "keep": {
+        "days": true,
+        "amount": 30
+    },
+    "auditLog": "c:\\Users\\Panchal Tanya\\Desktop\\ZIDIO\\backend\\logs\\.e6a248cdddf6e8811399a1ca4952d96c8b1bb89a-audit.json",
+    "files": [
+        {
+            "date": 1781185367020,
+            "name": "c:\\Users\\Panchal Tanya\\Desktop\\ZIDIO\\backend\\logs\\app-2026-06-11.log",
+            "hash": "6d9b8cdfca2df4787c089de56cc0bc417786fd58bafcc4b692895ae5bf4f874e"
+        }
+    ],
+    "hashType": "sha256"
+}
