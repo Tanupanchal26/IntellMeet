@@ -1,71 +1,78 @@
-import React from 'react';
+import { useEffect } from 'react';
+import { CheckSquare, User, Zap, Check, Loader2 } from 'lucide-react';
+import { useAI } from '../../hooks/useAI';
+import { aiService } from '../../services/ai.service';
+import Badge from '../common/Badge';
 
-interface ActionItem {
-  id: string;
-  task: string;
-  assignee: string;
-  dueDate: string;
-  status: 'Pending' | 'Completed';
-}
+const PRIORITY_BADGE = {
+  high:   'danger',
+  medium: 'warning',
+  low:    'info',
+} as const;
 
-interface ActionItemsProps {
-  items: ActionItem[];
-  onToggleStatus?: (id: string) => void;
-}
+const ActionItems = ({ meetingId }: { meetingId: string }) => {
+  const { actionItems, isGenerating, setActionItems, toggleActionItemDone, generateSummary } = useAI(meetingId);
 
-const ActionItems: React.FC<ActionItemsProps> = ({ items, onToggleStatus }) => {
+  // Load from API on mount if not already loaded
+  useEffect(() => {
+    if (actionItems.length > 0) return;
+    aiService.getActionItems(meetingId)
+      .then(({ data }) => setActionItems(data.actionItems))
+      .catch(() => {});
+  }, [meetingId]);
+
+  if (isGenerating) return (
+    <div className="flex items-center justify-center h-full gap-2">
+      <Loader2 size={18} className="text-[var(--color-primary)] animate-spin" />
+      <span className="text-sm text-[var(--color-text-muted)]">Extracting action items…</span>
+    </div>
+  );
+
+  if (!actionItems.length) return (
+    <div className="flex flex-col items-center justify-center h-full p-4 text-center">
+      <Zap size={32} className="text-[var(--color-primary)] opacity-40 mb-2" />
+      <p className="text-sm text-[var(--color-text-dim)]">Generate a summary first to extract AI action items</p>
+    </div>
+  );
+
+  const done = actionItems.filter(i => i.done).length;
+
   return (
-    <div style={{
-      background: '#ffffff',
-      borderRadius: '12px',
-      border: '1px solid #E2E8F0',
-      padding: '24px',
-      boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
-    }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-        <h4 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600, color: '#111827' }}>Action Items Extracted</h4>
-        <span style={{ fontSize: '0.75rem', background: '#ECFDF5', color: '#059669', padding: '4px 10px', borderRadius: '99px', fontWeight: 600 }}>
-          ✓ Action Items
-        </span>
+    <div className="p-3 flex flex-col gap-2">
+      <div className="flex items-center justify-between px-1 mb-1">
+        <p className="text-xs text-[var(--color-text-muted)] font-medium">{actionItems.length} action items</p>
+        <p className="text-xs text-[var(--color-text-dim)]">{done}/{actionItems.length} done</p>
       </div>
-
-      {items.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '16px', color: '#9CA3AF', fontSize: '0.85rem' }}>
-          No action items detected in this meeting.
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {items.map((item) => (
-            <div
-              key={item.id}
-              style={{
-                display: 'flex', alignItems: 'flex-start', gap: '12px',
-                padding: '12px', border: '1px solid #F3F4F6', borderRadius: '8px',
-                background: item.status === 'Completed' ? '#F9FAFB' : '#ffffff'
-              }}
-            >
-              <input
-                type="checkbox"
-                checked={item.status === 'Completed'}
-                onChange={() => onToggleStatus && onToggleStatus(item.id)}
-                style={{ marginTop: '3px', cursor: 'pointer' }}
-              />
-              <div style={{ flex: 1 }}>
-                <span style={{
-                  fontSize: '0.875rem', fontWeight: 500, color: '#1F2937',
-                  textDecoration: item.status === 'Completed' ? 'line-through' : 'none'
-                }}>
-                  {item.task}
-                </span>
-                <div style={{ display: 'flex', gap: '12px', marginTop: '6px', fontSize: '0.75rem', color: '#6B7280' }}>
-                  <span>Assignee: <strong style={{ color: '#4B5563' }}>{item.assignee}</strong></span>
-                  <span>Due: <strong>{item.dueDate}</strong></span>
-                </div>
+      {actionItems.map((item, idx) => (
+        <div
+          key={idx}
+          className={`flex items-start gap-3 p-3 rounded-xl border transition-all ${item.done ? 'bg-green-500/5 border-green-500/20' : 'bg-[var(--color-surface-2)] border-transparent'}`}
+        >
+          <button
+            onClick={() => toggleActionItemDone(idx)}
+            className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-all ${item.done ? 'bg-green-500 border-green-500' : 'border-[var(--color-border)] hover:border-[var(--color-primary)]'}`}
+          >
+            {item.done && <Check size={11} className="text-white" />}
+          </button>
+          <div className="flex-1 min-w-0">
+            <p className={`text-sm leading-snug ${item.done ? 'line-through text-[var(--color-text-dim)]' : 'text-[var(--color-text)]'}`}>
+              {item.text}
+            </p>
+            {item.assignee && (
+              <div className="flex items-center gap-1 mt-1">
+                <User size={10} className="text-[var(--color-text-dim)]" />
+                <span className="text-[10px] text-[var(--color-text-dim)]">{item.assignee}</span>
               </div>
-            </div>
-          ))}
+            )}
+            {item.dueDate && (
+              <p className="text-[10px] text-[var(--color-text-dim)] mt-0.5">Due: {item.dueDate}</p>
+            )}
+          </div>
+          <Badge variant={PRIORITY_BADGE[item.priority]} className="flex-shrink-0 capitalize">
+            {item.priority}
+          </Badge>
         </div>
-      )}
+      ))}
     </div>
   );
 };

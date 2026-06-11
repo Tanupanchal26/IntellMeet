@@ -1,93 +1,93 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { Send } from 'lucide-react';
+import { useChat } from '../../hooks/useChat';
+import { useAuthStore } from '../../store/auth.store';
+import { clsx } from 'clsx';
 
-interface ChatMessage {
-  sender: string;
-  text: string;
-  timestamp: string;
-}
+const fmt = (ts: string) => new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-interface ChatBoxProps {
-  messages: ChatMessage[];
-  onSendMessage: (text: string) => void;
-}
+const ChatBox = ({ meetingId }: { meetingId: string }) => {
+  const [input, setInput] = useState('');
+  const { user } = useAuthStore();
+  const { messages, typingUsers, sendMessage, sendTyping } = useChat(meetingId);
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const typingTimeout = useRef<ReturnType<typeof setTimeout>>();
 
-const ChatBox: React.FC<ChatBoxProps> = ({ messages, onSendMessage }) => {
-  const [inputText, setInputText] = useState('');
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
 
-  const handleSend = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (inputText.trim()) {
-      onSendMessage(inputText);
-      setInputText('');
-    }
+  const handleSend = () => {
+    if (!input.trim() || !user) return;
+    sendMessage(input.trim(), { id: user.id, name: user.name });
+    setInput('');
+    sendTyping(user.name, false);
   };
 
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  const handleTyping = (v: string) => {
+    setInput(v);
+    if (!user) return;
+    sendTyping(user.name, true);
+    clearTimeout(typingTimeout.current);
+    typingTimeout.current = setTimeout(() => sendTyping(user!.name, false), 1500);
+  };
 
   return (
-    <div style={{
-      width: '300px',
-      background: '#ffffff',
-      borderLeft: '1px solid #E2E8F0',
-      display: 'flex',
-      flexDirection: 'column',
-      height: '100%',
-      boxSizing: 'border-box'
-    }}>
-      <div style={{ padding: '16px', borderBottom: '1px solid #F3F4F6' }}>
-        <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600, color: '#111827' }}>Meeting Chat</h3>
-      </div>
-
-      {/* Messages area */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-        {messages.length === 0 ? (
-          <div style={{ textAlign: 'center', color: '#9CA3AF', fontSize: '0.85rem', marginTop: '32px' }}>
-            No messages yet. Say hello!
+    <div className="flex flex-col h-full">
+      <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-3">
+        {messages.length === 0 && (
+          <div className="flex items-center justify-center h-full">
+            <p className="text-sm text-[var(--color-text-dim)]">No messages yet. Say hello! 👋</p>
           </div>
-        ) : (
-          messages.map((m, idx) => (
-            <div key={idx} style={{ display: 'flex', flexDirection: 'column' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                <span style={{ fontWeight: 600, fontSize: '0.8rem', color: '#4F46E5' }}>{m.sender}</span>
-                <span style={{ fontSize: '0.7rem', color: '#9CA3AF' }}>{m.timestamp}</span>
+        )}
+        {messages.map((msg) => {
+          const isOwn = msg.senderId === user?.id;
+          return (
+            <div key={msg.id} className={clsx('flex gap-2', isOwn && 'flex-row-reverse')}>
+              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[var(--color-primary)] to-purple-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0 mt-0.5">
+                {msg.senderName.charAt(0).toUpperCase()}
               </div>
-              <div style={{
-                background: '#F3F4F6', padding: '8px 12px', borderRadius: '8px',
-                fontSize: '0.875rem', color: '#1F2937', wordBreak: 'break-word'
-              }}>
-                {m.text}
+              <div className={clsx('max-w-[75%] flex flex-col gap-0.5', isOwn && 'items-end')}>
+                <div className={clsx(
+                  'rounded-2xl px-3 py-2 text-sm leading-relaxed',
+                  isOwn
+                    ? 'bg-[var(--color-primary)] text-white rounded-tr-sm'
+                    : 'bg-[var(--color-surface-2)] text-[var(--color-text)] rounded-tl-sm'
+                )}>
+                  {msg.content}
+                </div>
+                <span className="text-[10px] text-[var(--color-text-dim)] px-1">{fmt(msg.timestamp)}</span>
               </div>
             </div>
-          ))
+          );
+        })}
+        {typingUsers.length > 0 && (
+          <div className="flex items-center gap-2 px-2">
+            <div className="flex gap-1">
+              <div className="typing-dot" /><div className="typing-dot" /><div className="typing-dot" />
+            </div>
+            <span className="text-xs text-[var(--color-text-dim)]">{typingUsers[0]} is typing…</span>
+          </div>
         )}
-        <div ref={messagesEndRef} />
+        <div ref={bottomRef} />
       </div>
 
-      {/* Input form */}
-      <form onSubmit={handleSend} style={{ padding: '12px', borderTop: '1px solid #F3F4F6', display: 'flex', gap: '8px' }}>
-        <input
-          type="text"
-          value={inputText}
-          onChange={(e) => setInputText(e.target.value)}
-          placeholder="Type a message..."
-          style={{
-            flex: 1, padding: '8px 12px', borderRadius: '6px', border: '1px solid #D1D5DB',
-            fontSize: '0.875rem', outline: 'none'
-          }}
-        />
-        <button
-          type="submit"
-          style={{
-            padding: '8px 16px', background: '#6D28D9', color: '#ffffff', border: 'none',
-            borderRadius: '6px', fontWeight: 500, fontSize: '0.875rem', cursor: 'pointer'
-          }}
-        >
-          Send
-        </button>
-      </form>
+      <div className="p-3 border-t border-[var(--color-border)]">
+        <div className="flex gap-2">
+          <input
+            value={input}
+            onChange={(e) => handleTyping(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
+            placeholder="Type a message..."
+            className="input-dark py-2 text-sm flex-1"
+          />
+          <button
+            onClick={handleSend}
+            disabled={!input.trim()}
+            className="p-2 rounded-lg bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary-hover)] disabled:opacity-40 transition-all"
+          >
+            <Send size={15} />
+          </button>
+        </div>
+      </div>
     </div>
   );
 };

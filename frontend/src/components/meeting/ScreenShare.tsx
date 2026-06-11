@@ -1,49 +1,18 @@
-import React from 'react';
+import { Monitor, X } from 'lucide-react';
+import { useMeetingStore } from '../../store/meeting.store';
 
-interface ScreenShareProps {
-  shareStream: MediaStream | null;
-  sharingUser: string | null;
-}
-
-const ScreenShare: React.FC<ScreenShareProps> = ({ shareStream, sharingUser }) => {
+const ScreenShare = () => {
+  const { isScreenSharing, toggleScreenShare } = useMeetingStore();
+  if (!isScreenSharing) return null;
   return (
-    <div style={{
-      flex: 2,
-      background: '#000000',
-      borderRadius: '12px',
-      overflow: 'hidden',
-      position: 'relative',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      aspectRatio: '16/9',
-      border: '2px dashed #10B981',
-      margin: '16px'
-    }}>
-      {shareStream ? (
-        <video
-          ref={(el) => { if (el) el.srcObject = shareStream; }}
-          autoPlay
-          playsInline
-          style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-        />
-      ) : (
-        <div style={{ color: '#9CA3AF', textAlign: 'center', padding: '24px' }}>
-          <div style={{ fontSize: '3rem', marginBottom: '16px' }}>🖥️</div>
-          <div style={{ fontSize: '1.2rem', fontWeight: 500 }}>No screen is currently shared</div>
-          <div style={{ fontSize: '0.85rem', color: '#6B7280', marginTop: '4px' }}>Click the screen icon below to share yours</div>
-        </div>
-      )}
-
-      {sharingUser && (
-        <div style={{
-          position: 'absolute', top: '16px', left: '16px',
-          background: 'rgba(16, 185, 129, 0.9)', padding: '6px 12px',
-          borderRadius: '4px', color: '#ffffff', fontSize: '0.85rem', fontWeight: 600
-        }}>
-          🖥️ {sharingUser} is sharing their screen
-        </div>
-      )}
+    <div className="absolute top-2 left-2 z-10">
+      <div className="flex items-center gap-2 bg-green-500/20 border border-green-500/40 rounded-lg px-3 py-1.5">
+        <Monitor size={14} className="text-green-400" />
+        <span className="text-xs text-green-400 font-medium">Screen sharing active</span>
+        <button onClick={toggleScreenShare} className="text-green-400 hover:text-red-400 transition-colors">
+          <X size={13} />
+        </button>
+      </div>
     </div>
   );
 };

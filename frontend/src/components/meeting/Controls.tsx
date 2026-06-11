@@ -1,92 +1,114 @@
-import React from 'react';
+import { Mic, MicOff, Video, VideoOff, Monitor, Circle, PhoneOff, Hand, Smile, MoreHorizontal } from 'lucide-react';
+import { useMeetingStore } from '../../store/meeting.store';
+import { useMeeting } from '../../hooks/useMeeting';
+import { clsx } from 'clsx';
+import { useParams } from 'react-router-dom';
 
-interface ControlsProps {
-  isMuted: boolean;
-  isVideoOff: boolean;
-  isSharing: boolean;
-  onToggleMute: () => void;
-  onToggleVideo: () => void;
-  onToggleShare: () => void;
-  onLeave: () => void;
+interface ControlBtnProps {
+  icon: any;
+  activeIcon?: any;
+  label: string;
+  onClick: () => void;
+  active?: boolean;
+  danger?: boolean;
+  disabled?: boolean;
 }
 
-const Controls: React.FC<ControlsProps> = ({
-  isMuted,
-  isVideoOff,
-  isSharing,
-  onToggleMute,
-  onToggleVideo,
-  onToggleShare,
-  onLeave
-}) => {
+const ControlBtn = ({ icon: Icon, activeIcon: ActiveIcon, label, onClick, active, danger, disabled }: ControlBtnProps) => {
+  const DisplayIcon = active && ActiveIcon ? ActiveIcon : Icon;
   return (
-    <div style={{
-      height: '80px',
-      background: '#1F2937',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: '16px',
-      padding: '0 24px',
-      borderTop: '1px solid #374151'
-    }}>
-      {/* Audio Button */}
-      <button
-        onClick={onToggleMute}
-        style={{
-          width: '48px', height: '48px', borderRadius: '50%', border: 'none',
-          background: isMuted ? '#EF4444' : '#374151', color: '#ffffff',
-          fontSize: '1.2rem', cursor: 'pointer', display: 'flex',
-          alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s'
-        }}
-        title={isMuted ? 'Unmute Microphone' : 'Mute Microphone'}
-      >
-        {isMuted ? '🔇' : '🎙️'}
-      </button>
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      title={label}
+      className={clsx(
+        'flex flex-col items-center gap-1 min-w-[52px] px-3 py-2 rounded-xl transition-all duration-150',
+        'select-none outline-none disabled:opacity-40 disabled:cursor-not-allowed active:scale-95',
+        danger
+          ? 'bg-red-500 text-white hover:bg-red-600 shadow-[0_2px_8px_rgba(239,68,68,0.3)]'
+          : active
+          ? 'bg-indigo-500/12 text-indigo-300 border border-indigo-500/20'
+          : 'bg-white/[0.04] text-[#94A3B8] border border-transparent hover:bg-white/[0.07] hover:text-[#F8FAFC]'
+      )}
+    >
+      <DisplayIcon size={16} strokeWidth={active ? 2 : 1.75} />
+      <span className="text-[9px] font-medium leading-none">{label}</span>
+    </button>
+  );
+};
 
-      {/* Video Button */}
-      <button
-        onClick={onToggleVideo}
-        style={{
-          width: '48px', height: '48px', borderRadius: '50%', border: 'none',
-          background: isVideoOff ? '#EF4444' : '#374151', color: '#ffffff',
-          fontSize: '1.2rem', cursor: 'pointer', display: 'flex',
-          alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s'
-        }}
-        title={isVideoOff ? 'Turn Camera On' : 'Turn Camera Off'}
-      >
-        {isVideoOff ? '📷' : '📹'}
-      </button>
+const Controls = () => {
+  const { id: meetingId } = useParams();
+  const {
+    isMuted, isVideoOff, isScreenSharing, isRecording,
+    toggleMute, toggleVideo, toggleScreenShare, toggleRecording,
+    currentMeeting,
+  } = useMeetingStore();
+  const { leaveMeeting } = useMeeting(currentMeeting?.roomId);
 
-      {/* Screen Share Button */}
-      <button
-        onClick={onToggleShare}
-        style={{
-          width: '48px', height: '48px', borderRadius: '50%', border: 'none',
-          background: isSharing ? '#10B981' : '#374151', color: '#ffffff',
-          fontSize: '1.2rem', cursor: 'pointer', display: 'flex',
-          alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s'
-        }}
-        title={isSharing ? 'Stop Screen Share' : 'Share Screen'}
-      >
-        🖥️
-      </button>
+  return (
+    <div className={clsx(
+      'flex items-center justify-center gap-1.5 py-3 px-4 shrink-0',
+      'bg-[#09090E]/90 backdrop-blur-md border-t border-[rgba(255,255,255,0.05)]',
+    )}>
+      {/* Left group */}
+      <div className="flex items-center gap-1.5">
+        <ControlBtn
+          icon={Mic} activeIcon={MicOff}
+          label={isMuted ? 'Unmute' : 'Mute'}
+          onClick={toggleMute}
+          active={isMuted}
+        />
+        <ControlBtn
+          icon={Video} activeIcon={VideoOff}
+          label={isVideoOff ? 'Start' : 'Stop'}
+          onClick={toggleVideo}
+          active={isVideoOff}
+        />
+      </div>
 
-      {/* Spacer */}
-      <div style={{ width: '24px' }} />
+      <div className="w-px h-8 bg-[rgba(255,255,255,0.06)] mx-1" />
 
-      {/* Leave Button */}
-      <button
-        onClick={onLeave}
-        style={{
-          padding: '0 24px', height: '48px', borderRadius: '24px', border: 'none',
-          background: '#EF4444', color: '#ffffff', fontWeight: 600,
-          fontSize: '0.95rem', cursor: 'pointer', display: 'flex',
-          alignItems: 'center', gap: '8px', transition: 'all 0.2s'
-        }}
-      >
-        <span>End / Leave</span>
-      </button>
+      {/* Center group */}
+      <div className="flex items-center gap-1.5">
+        <ControlBtn
+          icon={Monitor}
+          label="Share"
+          onClick={toggleScreenShare}
+          active={isScreenSharing}
+        />
+        <ControlBtn
+          icon={Circle}
+          label={isRecording ? 'Stop' : 'Record'}
+          onClick={toggleRecording}
+          active={isRecording}
+        />
+        <ControlBtn
+          icon={Hand}
+          label="Hand"
+          onClick={() => {}}
+        />
+        <ControlBtn
+          icon={Smile}
+          label="React"
+          onClick={() => {}}
+        />
+        <ControlBtn
+          icon={MoreHorizontal}
+          label="More"
+          onClick={() => {}}
+        />
+      </div>
+
+      <div className="w-px h-8 bg-[rgba(255,255,255,0.06)] mx-1" />
+
+      {/* Leave */}
+      <ControlBtn
+        icon={PhoneOff}
+        label="Leave"
+        onClick={() => leaveMeeting(meetingId)}
+        danger
+      />
     </div>
   );
 };

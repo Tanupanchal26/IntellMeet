@@ -1,115 +1,48 @@
-import React from 'react';
+import { MicOff, Crown, UserX } from 'lucide-react';
+import { useMeetingStore } from '../../store/meeting.store';
+import { useAuthStore } from '../../store/auth.store';
+import { clsx } from 'clsx';
 
-interface Participant {
-  id: string;
-  name: string;
-  isMuted: boolean;
-  isVideoOff: boolean;
-  isHost?: boolean;
-}
+const ParticipantList = () => {
+  const { participants, currentMeeting, isMuted, isVideoOff } = useMeetingStore();
+  const { user } = useAuthStore();
+  const isHostUser = user?.id === currentMeeting?.host;
 
-interface ParticipantListProps {
-  participants: Participant[];
-  localUser: { name: string; isHost?: boolean } | null;
-  onToggleMuteParticipant?: (id: string) => void;
-  onKickParticipant?: (id: string) => void;
-}
+  const all = [
+    { id: user?.id || 'local', name: user?.name || 'You', isMuted, isVideoOff, isHost: isHostUser ?? false, socketId: 'local', isLocal: true },
+    ...participants.map(p => ({ ...p, isLocal: false }))
+  ];
 
-const ParticipantList: React.FC<ParticipantListProps> = ({
-  participants,
-  localUser,
-  onToggleMuteParticipant,
-  onKickParticipant
-}) => {
   return (
-    <div style={{
-      width: '300px',
-      background: '#ffffff',
-      borderLeft: '1px solid #E2E8F0',
-      display: 'flex',
-      flexDirection: 'column',
-      height: '100%',
-      boxSizing: 'border-box'
-    }}>
-      <div style={{ padding: '16px', borderBottom: '1px solid #F3F4F6' }}>
-        <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600, color: '#111827' }}>
-          Participants ({participants.length + (localUser ? 1 : 0)})
-        </h3>
-      </div>
-
-      <div style={{ flex: 1, overflowY: 'auto', padding: '12px' }}>
-        {/* Local user item */}
-        {localUser && (
-          <div style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            padding: '8px 12px', borderRadius: '6px', background: '#F9FAFB', marginBottom: '8px'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <div style={{
-                width: '32px', height: '32px', borderRadius: '50%', background: '#6D28D9',
-                color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontWeight: 'bold', fontSize: '0.9rem'
-              }}>
-                {localUser.name.charAt(0)}
-              </div>
-              <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>{localUser.name} (You)</span>
+    <div className="p-3 flex flex-col gap-2">
+      <p className="text-xs text-[var(--color-text-muted)] font-medium px-1">
+        {all.length} participant{all.length !== 1 ? 's' : ''}
+      </p>
+      {all.map((p) => (
+        <div key={p.socketId} className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-[var(--color-surface-2)] hover:bg-[var(--color-border)] transition-colors">
+          <div className="relative">
+            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[var(--color-primary)] to-purple-500 flex items-center justify-center text-white text-sm font-bold">
+              {p.name.charAt(0).toUpperCase()}
             </div>
-            {localUser.isHost && (
-              <span style={{ fontSize: '0.75rem', background: '#EEF2F6', color: '#4F46E5', padding: '2px 6px', borderRadius: '4px' }}>Host</span>
-            )}
+            <span className={clsx('status-dot absolute -bottom-0.5 -right-0.5 border-2 border-[var(--color-surface-2)]', 'status-dot--online')} />
           </div>
-        )}
-
-        {/* Remote users list */}
-        {participants.map((p) => (
-          <div key={p.id} style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            padding: '8px 12px', borderRadius: '6px', hover: { background: '#F9FAFB' }
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <div style={{
-                width: '32px', height: '32px', borderRadius: '50%', background: '#4B5563',
-                color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontWeight: 'bold', fontSize: '0.9rem'
-              }}>
-                {p.name.charAt(0)}
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <span style={{ fontSize: '0.9rem', color: '#1F2937', fontWeight: 500 }}>{p.name}</span>
-                {p.isHost && <span style={{ fontSize: '0.7rem', color: '#4F46E5' }}>Host</span>}
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '1rem' }}>{p.isMuted ? '🔇' : '🎙️'}</span>
-              <span style={{ fontSize: '1rem' }}>{p.isVideoOff ? '📷' : '📹'}</span>
-
-              {localUser?.isHost && (
-                <div style={{ display: 'flex', gap: '4px' }}>
-                  {onToggleMuteParticipant && (
-                    <button
-                      onClick={() => onToggleMuteParticipant(p.id)}
-                      style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.8rem' }}
-                      title="Mute/Unmute"
-                    >
-                      🔇
-                    </button>
-                  )}
-                  {onKickParticipant && (
-                    <button
-                      onClick={() => onKickParticipant(p.id)}
-                      style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.8rem' }}
-                      title="Remove from meeting"
-                    >
-                      ❌
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-[var(--color-text)] truncate">
+              {p.name} {p.isLocal && <span className="text-[var(--color-text-dim)] text-xs">(You)</span>}
+            </p>
+            {p.isHost && <p className="text-[10px] text-[var(--color-primary)]">Host</p>}
           </div>
-        ))}
-      </div>
+          <div className="flex items-center gap-1">
+            {p.isHost && <Crown size={13} className="text-yellow-400" />}
+            {p.isMuted && <MicOff size={13} className="text-[var(--color-danger)]" />}
+          </div>
+          {isHostUser && !p.isLocal && (
+            <button className="p-1 rounded text-[var(--color-text-dim)] hover:text-[var(--color-danger)] hover:bg-red-500/10 transition-colors">
+              <UserX size={13} />
+            </button>
+          )}
+        </div>
+      ))}
     </div>
   );
 };
