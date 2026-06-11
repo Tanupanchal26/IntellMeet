@@ -1,76 +1,98 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ROUTES } from '../../utils/constants';
+import { Search, Menu, Plus, Video } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useAppSelector, useAppDispatch } from '../../hooks/useAppDispatch';
+import { setMobileSidebar } from '../../store/slices/uiSlice';
+import NotificationCenter from '../common/NotificationCenter';
 import Button from '../common/Button';
+import { ROUTES } from '../../constants';
+import { clsx } from 'clsx';
 
-const Navbar: React.FC = () => {
-  const [menuOpen, setMenuOpen] = useState(false);
+interface Props { title?: string; }
+
+const TopBar = ({ title }: Props) => {
+  const user     = useAppSelector((s) => s.auth.user);
+  const dispatch = useAppDispatch();
+  const navigate = useNavigate();
+  const initial  = user?.name?.charAt(0).toUpperCase() ?? 'U';
 
   return (
-    <header className="navbar">
-      <div className="navbar__inner">
-        <Link to={ROUTES.HOME} className="navbar__brand">
-          <span className="navbar__brand-dot" />
-          IntelMeet
-        </Link>
-
-        <nav className="navbar__links">
-          <Link to={ROUTES.HOME}>Home</Link>
-          <Link to={ROUTES.DASHBOARD}>Dashboard</Link>
-          <a href="#features">Features</a>
-          <a href="#pricing">Pricing</a>
-        </nav>
-
-        <div className="navbar__actions">
-          <Link to={ROUTES.LOGIN}>
-            <Button variant="outline" size="sm">Sign In</Button>
-          </Link>
-          <Link to={ROUTES.REGISTER}>
-            <Button variant="primary" size="sm">Get Started</Button>
-          </Link>
-        </div>
-
+    <header className="top-bar" role="banner">
+      {/* Left: mobile toggle + title */}
+      <div className="flex items-center gap-3 shrink-0">
         <button
-          className="navbar__menu-toggle"
-          onClick={() => setMenuOpen((o) => !o)}
-          aria-label="Toggle menu"
+          onClick={() => dispatch(setMobileSidebar(true))}
+          className="md:hidden p-2 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors"
+          aria-label="Open navigation"
         >
-          {menuOpen ? '✕' : '☰'}
+          <Menu size={18} />
         </button>
+        {title && (
+          <h1 className="text-sm font-semibold text-gray-900 tracking-tight hidden sm:block">
+            {title}
+          </h1>
+        )}
       </div>
 
-      <AnimatePresence>
-        {menuOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.18 }}
-            style={{
-              position: 'absolute', top: '68px', left: 0, right: 0,
-              background: '#fff', borderBottom: '1px solid #E2E8F0',
-              padding: '1rem 1.5rem', display: 'flex', flexDirection: 'column',
-              gap: '1rem', zIndex: 99,
-            }}
+      {/* Center: search */}
+      <div className="flex-1 max-w-[360px] mx-auto">
+        <div className="search-bar">
+          <Search
+            size={14}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
+            aria-hidden="true"
+          />
+          <input
+            placeholder="Search meetings, tasks, people…"
+            aria-label="Search"
+          />
+          <kbd
+            className="absolute right-3 top-1/2 -translate-y-1/2 hidden sm:flex items-center gap-0.5 pointer-events-none"
+            aria-label="Keyboard shortcut: Command K"
           >
-            <Link to={ROUTES.HOME} onClick={() => setMenuOpen(false)} style={{ color: '#6B7280', fontWeight: 500 }}>Home</Link>
-            <Link to={ROUTES.DASHBOARD} onClick={() => setMenuOpen(false)} style={{ color: '#6B7280', fontWeight: 500 }}>Dashboard</Link>
-            <a href="#features" onClick={() => setMenuOpen(false)} style={{ color: '#6B7280', fontWeight: 500 }}>Features</a>
-            <a href="#pricing" onClick={() => setMenuOpen(false)} style={{ color: '#6B7280', fontWeight: 500 }}>Pricing</a>
-            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-              <Link to={ROUTES.LOGIN} onClick={() => setMenuOpen(false)} style={{ flex: 1 }}>
-                <Button variant="outline" size="sm" style={{ width: '100%' }}>Sign In</Button>
-              </Link>
-              <Link to={ROUTES.REGISTER} onClick={() => setMenuOpen(false)} style={{ flex: 1 }}>
-                <Button variant="primary" size="sm" style={{ width: '100%' }}>Get Started</Button>
-              </Link>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            <span className="text-[11px] text-gray-400 font-medium">⌘K</span>
+          </kbd>
+        </div>
+      </div>
+
+      {/* Right: actions */}
+      <div className="flex items-center gap-2 shrink-0">
+        <Button
+          variant="primary"
+          size="sm"
+          leftIcon={<Plus size={13} />}
+          onClick={() => navigate(ROUTES.LOBBY)}
+          className="hidden sm:inline-flex"
+          aria-label="Start new meeting"
+        >
+          New Meeting
+        </Button>
+
+        <button
+          onClick={() => navigate(ROUTES.LOBBY)}
+          className="sm:hidden p-2 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors"
+          aria-label="New meeting"
+        >
+          <Video size={17} />
+        </button>
+
+        <NotificationCenter />
+
+        {/* Avatar */}
+        <button
+          onClick={() => navigate(ROUTES.PROFILE)}
+          className={clsx(
+            'w-8 h-8 rounded-full flex items-center justify-center shrink-0',
+            'text-white text-xs font-bold bg-blue-600',
+            'hover:ring-2 hover:ring-blue-500/30 hover:ring-offset-1',
+            'transition-all duration-150',
+          )}
+          aria-label={`Open profile for ${user?.name ?? 'User'}`}
+        >
+          {initial}
+        </button>
+      </div>
     </header>
   );
 };
 
-export default Navbar;
+export default TopBar;
