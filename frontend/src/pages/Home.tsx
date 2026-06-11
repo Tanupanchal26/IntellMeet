@@ -1,442 +1,616 @@
-import React from 'react';
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import toast from 'react-hot-toast';
+import {
+  Zap, Video, Brain, CheckSquare, BarChart2, Shield,
+  ArrowRight, Mic, Sparkles, Star, MessageSquare,
+  ChevronRight, Check, Globe, Lock, Cpu, Users,
+} from 'lucide-react';
+import { ROUTES } from '../utils/constants';
 import Button from '../components/common/Button';
-import Card from '../components/common/Card';
-import Badge from '../components/common/Badge';
-import { generateMeetingCode } from '../utils/helpers';
 
-const fadeUp = {
-  hidden: { opacity: 0, y: 28 },
-  show: (i = 0) => ({
-    opacity: 1, y: 0,
-    transition: { delay: i * 0.08, duration: 0.5, ease: 'easeOut' },
-  }),
-};
+/* ── data ─────────────────────────────────────────────────────────── */
+const LOGOS = ['Stripe', 'Notion', 'Vercel', 'Linear', 'Figma', 'Loom', 'Intercom', 'Atlassian'];
 
-const STATS = [
-  { value: '10M+',  label: 'Meetings Hosted' },
-  { value: '150+',  label: 'Countries' },
-  { value: '99.9%', label: 'Uptime SLA' },
-  { value: '4.9★',  label: 'Avg Rating' },
-];
-
-const AVATARS = ['T', 'A', 'R', 'S', 'M'];
-
-const VIDEO_FEATURES = [
-  { icon: '🎥', title: 'HD Video Calls', desc: 'Crystal-clear 1080p video with adaptive quality for any bandwidth.', items: ['Up to 500 participants', 'Virtual backgrounds', 'Noise cancellation'] },
-  { icon: '🖥️', title: 'Screen Sharing', desc: 'Share your entire screen, a window, or a single browser tab instantly.', items: ['Multi-screen support', 'Annotation tools', 'Remote control'] },
-  { icon: '⏺️', title: 'Recording', desc: 'Record meetings to the cloud or locally with automatic transcription.', items: ['Cloud storage', 'Auto transcription', 'Shareable links'] },
-  { icon: '👥', title: 'Participant Mgmt', desc: 'Full host controls — mute, remove, spotlight, and manage roles live.', items: ['Waiting rooms', 'Breakout rooms', 'Co-host controls'] },
+const FEATURES = [
+  { icon: Video,        label: 'HD Video Conferencing',    desc: 'WebRTC-powered multi-party video with adaptive bitrate, noise suppression, and <100ms latency.', color: 'text-indigo-400', bg: 'bg-indigo-500/7', border: 'border-indigo-500/14' },
+  { icon: Brain,        label: 'AI Meeting Intelligence',  desc: 'Live transcription, GPT-4o summaries, action item extraction, and semantic search across your history.', color: 'text-violet-400', bg: 'bg-violet-500/7', border: 'border-violet-500/14' },
+  { icon: CheckSquare,  label: 'AI-Generated Task Board',  desc: 'Kanban board with drag-and-drop. Tasks auto-extracted from meeting transcripts.', color: 'text-emerald-400', bg: 'bg-emerald-500/7', border: 'border-emerald-500/14' },
+  { icon: MessageSquare,label: 'Team Channels',            desc: 'Slack-style channels with threads, reactions, file sharing, and pinned messages.', color: 'text-blue-400', bg: 'bg-blue-500/7', border: 'border-blue-500/14' },
+  { icon: BarChart2,    label: 'Analytics & Insights',     desc: 'Meeting frequency, participation rates, AI usage metrics, and productivity trends.', color: 'text-amber-400', bg: 'bg-amber-500/7', border: 'border-amber-500/14' },
+  { icon: Shield,       label: 'Enterprise Security',      desc: 'SOC 2 Type II, E2E encryption, SSO/SAML, audit logs, role-based access control.', color: 'text-red-400', bg: 'bg-red-500/7', border: 'border-red-500/14' },
 ];
 
 const AI_FEATURES = [
-  { icon: '📝', title: 'Live Transcription', desc: 'Real-time speech-to-text in 30+ languages with speaker identification.' },
-  { icon: '🤖', title: 'AI Summaries', desc: 'Auto-generated meeting summaries delivered to your inbox immediately after calls.' },
-  { icon: '✅', title: 'Action Items', desc: 'AI automatically extracts tasks, owners, and deadlines from conversations.' },
-  { icon: '📊', title: 'Meeting Insights', desc: 'Sentiment analysis, talk-time distribution, and engagement scores per session.' },
-];
-
-const COLLAB_FEATURES = [
-  { icon: '💬', title: 'Team Chat', desc: 'Persistent channels and direct messages — integrated right inside your meeting space.' },
-  { icon: '📋', title: 'Shared Notes', desc: 'Collaborative real-time notes that sync across all participants automatically.' },
-  { icon: '📎', title: 'File Sharing', desc: 'Drag-and-drop file sharing with version history and inline previews.' },
-  { icon: '🔔', title: 'Smart Notifications', desc: 'Context-aware alerts that only interrupt when it truly matters.' },
-];
-
-const TASK_FEATURES = [
-  { icon: '📌', title: 'Kanban Boards', desc: 'Visual task boards to plan sprints, track progress, and ship faster as a team.', items: ['Drag-and-drop cards', 'Custom columns', 'Labels & priorities'] },
-  { icon: '👤', title: 'Task Assignment', desc: 'Assign tasks directly from meeting action items with one click.', items: ['Due dates', 'Assignees', 'Dependencies'] },
-  { icon: '📈', title: 'Progress Tracking', desc: 'Real-time burndown charts and milestone tracking for every project.', items: ['Burndown charts', 'Milestone alerts', 'Time logging'] },
-];
-
-const ANALYTICS_FEATURES = [
-  { icon: '📉', title: 'Productivity Reports', desc: 'Weekly and monthly reports on meeting frequency, length, and outcomes.' },
-  { icon: '🎯', title: 'Meeting Analytics', desc: 'Deep-dive metrics: who joins late, who speaks most, and where time is lost.' },
-  { icon: '🏆', title: 'Team Insights', desc: 'Compare team performance trends and identify coaching opportunities.' },
-];
-
-const SECURITY_FEATURES = [
-  { icon: '🔑', title: 'JWT Authentication', desc: 'Stateless, secure token-based auth with refresh token rotation.' },
-  { icon: '🛡️', title: 'Role-Based Access', desc: 'Granular permissions — admin, host, co-host, and guest roles out of the box.' },
-  { icon: '🔒', title: 'End-to-End Encryption', desc: 'AES-256 encryption for all media streams and stored data at rest.' },
-  { icon: '📋', title: 'Compliance Ready', desc: 'SOC 2 Type II, GDPR, and HIPAA compliant infrastructure.' },
+  { icon: Mic,          label: 'Live Transcription',  desc: 'Real-time speech-to-text powered by Whisper' },
+  { icon: Sparkles,     label: 'Smart Summaries',     desc: 'Concise structured summaries generated instantly' },
+  { icon: CheckSquare,  label: 'Action Items',        desc: 'Auto-extracted tasks with assignees and due dates' },
+  { icon: Brain,        label: 'AI Assistant',        desc: 'Ask anything about any meeting, ever' },
 ];
 
 const TESTIMONIALS = [
-  { quote: 'IntelMeet completely replaced Zoom for our 200-person company. The AI summaries alone save us hours every week.', name: 'Sarah Chen', role: 'VP Engineering, NovaTech', avatar: 'S' },
-  { quote: 'The task management integration is a game changer. We go from meeting to action items in seconds — no more lost follow-ups.', name: 'Marcus Williams', role: 'Product Lead, Streamline', avatar: 'M' },
-  { quote: 'Best-in-class security without sacrificing UX. Our compliance team signed off in days, not months.', name: 'Priya Sharma', role: 'CTO, FinFlow', avatar: 'P' },
+  { quote: 'IntellMeet replaced our Zoom + Notion + Asana stack. The AI summaries alone save us 3 hours a week.', name: 'Sarah Chen', role: 'Head of Product, Acme Corp', initials: 'SC', stars: 5 },
+  { quote: 'The quality of transcription and action item extraction is honestly better than anything I\'ve seen.', name: 'Marcus Rodriguez', role: 'Engineering Director, TechFlow', initials: 'MR', stars: 5 },
+  { quote: 'Our team adopted it in 2 days. The meeting room UI feels as polished as Google Meet.', name: 'Priya Nair', role: 'VP Operations, ScaleUp Inc', initials: 'PN', stars: 5 },
 ];
 
-interface Plan {
-  name: string;
-  price: string;
-  period?: string;
-  desc: string;
-  features: string[];
-  cta: string;
-  variant: 'outline' | 'primary' | 'white';
-  featured?: boolean;
-}
-
-const PLANS: Plan[] = [
+const PLANS = [
   {
-    name: 'Starter', price: 'Free', desc: 'Perfect for small teams getting started.',
-    features: ['Up to 5 users', '40-min meeting limit', 'HD video & audio', 'Team chat', '5 GB storage'],
-    cta: 'Get Started Free', variant: 'outline',
+    name: 'Free', price: '$0', period: '/month',
+    desc: 'For individuals and small teams.',
+    features: ['5 meetings/month', '1 workspace', 'AI summaries (3/month)', '720p video', 'Basic chat'],
+    cta: 'Get started', variant: 'secondary' as const,
   },
   {
-    name: 'Pro', price: '$12', period: '/user/mo', desc: 'For growing teams that need more power.',
-    features: ['Unlimited users', 'Unlimited meetings', 'AI summaries & transcription', 'Task management', '100 GB storage', 'Priority support'],
-    cta: 'Start Free Trial', variant: 'white', featured: true,
+    name: 'Pro', price: '$15', period: '/user/month',
+    desc: 'For growing teams that need more.',
+    features: ['Unlimited meetings', '5 workspaces', 'Unlimited AI', '1080p HD video', 'Advanced analytics', 'Priority support'],
+    cta: 'Start free trial', variant: 'primary' as const, highlight: true,
   },
   {
-    name: 'Enterprise', price: 'Custom', desc: 'For large orgs with advanced needs.',
-    features: ['Everything in Pro', 'SSO & SAML', 'Custom roles & permissions', 'Dedicated CSM', 'SLA guarantee', 'On-premise option'],
-    cta: 'Contact Sales', variant: 'outline',
+    name: 'Enterprise', price: 'Custom', period: '',
+    desc: 'For organisations at scale.',
+    features: ['Everything in Pro', 'SSO / SAML', 'SOC 2 compliance', 'Dedicated SLA', 'Custom integrations', 'Audit logs'],
+    cta: 'Contact sales', variant: 'secondary' as const,
   },
 ];
 
-/* ─── Reusable animated wrapper ────────────────── */
-const FadeUp: React.FC<{ children: React.ReactNode; i?: number; className?: string }> = ({ children, i = 0, className = '' }) => (
-  <motion.div
-    className={className}
-    variants={fadeUp}
-    initial="hidden"
-    whileInView="show"
-    viewport={{ once: true }}
-    custom={i}
-  >
-    {children}
-  </motion.div>
-);
+const STATS = [
+  { value: '10K+', label: 'Teams' },
+  { value: '2M+',  label: 'Meetings hosted' },
+  { value: '99.9%',label: 'Uptime SLA' },
+  { value: '4.9',  label: 'Star rating' },
+];
 
-/* ─── Section Header ───────────────────────────── */
-const SectionHeader: React.FC<{ badge: string; title: string; subtitle: string; light?: boolean }> = ({ badge, title, subtitle, light = false }) => (
-  <div className="section-header">
-    <FadeUp><Badge variant={light ? 'blue' : 'purple'}>{badge}</Badge></FadeUp>
-    <FadeUp i={1}><h2 className="section-title">{title}</h2></FadeUp>
-    <FadeUp i={2}><p className="section-subtitle">{subtitle}</p></FadeUp>
+const SECURITY = [
+  { icon: Lock,        title: 'End-to-End Encryption',  desc: 'All video and data encrypted in transit and at rest using AES-256.' },
+  { icon: Shield,      title: 'SOC 2 Type II',           desc: 'Independently audited security controls, available on Enterprise.' },
+  { icon: Globe,       title: 'GDPR Compliant',          desc: 'Data residency in US, EU, and APAC. Full DPA available.' },
+  { icon: Cpu,         title: 'SSO / SAML 2.0',          desc: 'Integrate with Okta, Azure AD, Google Workspace, and more.' },
+  { icon: CheckSquare, title: 'Audit Logs',               desc: 'Complete activity trail for compliance reviews and investigations.' },
+  { icon: Users,       title: 'RBAC',                    desc: 'Fine-grained role-based access control across workspaces.' },
+];
+
+/* ── animation helpers ─────────────────────────────────────────────── */
+const fadeUp = (delay = 0) => ({
+  initial: { opacity: 0, y: 20 },
+  whileInView: { opacity: 1, y: 0 },
+  viewport: { once: true, margin: '-60px' },
+  transition: { duration: 0.55, ease: [0.25, 1, 0.5, 1], delay },
+});
+
+/* ── component ─────────────────────────────────────────────────────── */
+const Home = () => (
+  <div className="min-h-screen bg-[#07070C] text-[#F1F5F9] overflow-x-hidden">
+
+    {/* ════════════════════════════ NAV ════════════════════════════ */}
+    <header className="sticky top-0 z-50 border-b border-[rgba(255,255,255,0.045)]" style={{ background: 'rgba(7,7,12,0.88)', backdropFilter: 'blur(20px) saturate(1.8)' }}>
+      <div className="max-w-[1120px] mx-auto flex items-center justify-between px-6 h-[56px]">
+        <Link to={ROUTES.HOME} className="flex items-center gap-2.5 group" aria-label="IntellMeet home">
+          <div className="w-7 h-7 rounded-xl bg-indigo-500 flex items-center justify-center shadow-[0_0_0_1px_rgba(99,102,241,0.3),0_4px_12px_rgba(99,102,241,0.3)]">
+            <Zap size={14} className="text-white" strokeWidth={2.5} />
+          </div>
+          <span className="font-bold text-sm tracking-tight">IntellMeet</span>
+        </Link>
+
+        <nav className="hidden md:flex items-center gap-0.5" aria-label="Main navigation">
+          {[['Features', '#features'], ['Pricing', '#pricing'], ['Security', '#security'], ['Changelog', '#']].map(([label, href]) => (
+            <a key={label} href={href} className="px-3 py-1.5 text-[0.8125rem] text-[#64748B] hover:text-[#CBD5E1] rounded-lg hover:bg-white/[0.04] transition-all font-medium">
+              {label}
+            </a>
+          ))}
+        </nav>
+
+        <div className="flex items-center gap-2">
+          <Link to={ROUTES.LOGIN}>
+            <Button variant="ghost" size="sm" className="text-[#64748B] hover:text-[#CBD5E1]">Sign in</Button>
+          </Link>
+          <Link to={ROUTES.REGISTER}>
+            <Button size="sm" rightIcon={<ChevronRight size={12} />}>Get started</Button>
+          </Link>
+        </div>
+      </div>
+    </header>
+
+    {/* ════════════════════════════ HERO ════════════════════════════ */}
+    <section className="relative overflow-hidden pt-24 pb-20 px-6">
+      {/* Ambient background */}
+      <div className="absolute inset-0 pointer-events-none select-none" aria-hidden="true">
+        <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[900px] h-[700px] rounded-full opacity-[0.035]" style={{ background: 'radial-gradient(ellipse, #6366F1 0%, transparent 70%)' }} />
+        <div className="absolute top-1/3 -left-24 w-80 h-80 rounded-full opacity-[0.025]" style={{ background: 'radial-gradient(ellipse, #7C3AED 0%, transparent 70%)' }} />
+        <div className="absolute top-1/3 -right-24 w-80 h-80 rounded-full opacity-[0.025]" style={{ background: 'radial-gradient(ellipse, #3B82F6 0%, transparent 70%)' }} />
+        {/* Dot grid */}
+        <div
+          className="absolute inset-0 opacity-[0.022]"
+          style={{ backgroundImage: 'radial-gradient(circle, #6366F1 1px, transparent 1px)', backgroundSize: '40px 40px' }}
+        />
+      </div>
+
+      <div className="max-w-[1120px] mx-auto">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-14 items-center">
+
+          {/* Left */}
+          <motion.div className="flex flex-col gap-6" {...fadeUp(0)}>
+            {/* Pill badge */}
+            <div className="inline-flex self-start items-center gap-2 px-3 py-1.5 rounded-full border border-indigo-500/18 bg-indigo-500/6 text-indigo-300 text-[0.6875rem] font-semibold">
+              <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse-dot" aria-hidden="true" />
+              AI-Powered Enterprise Collaboration
+              <span className="px-1.5 py-0.5 rounded-full bg-indigo-500/15 text-[10px] font-bold tracking-wide">NEW</span>
+            </div>
+
+            {/* Headline */}
+            <h1 className="text-display text-[#F1F5F9]">
+              The meeting platform<br />
+              that{' '}
+              <span className="gradient-text-animated">thinks with you</span>
+            </h1>
+
+            {/* Subhead */}
+            <p className="text-[#64748B] text-[1rem] leading-[1.7] max-w-md">
+              HD video, live AI transcription, smart summaries, action item extraction, and team channels — unified in one enterprise workspace.
+            </p>
+
+            {/* CTAs */}
+            <div className="flex items-center gap-3 flex-wrap">
+              <Link to={ROUTES.REGISTER}>
+                <Button size="lg" rightIcon={<ArrowRight size={14} />}>
+                  Start free — no card needed
+                </Button>
+              </Link>
+              <a href="#features">
+                <Button variant="ghost" size="lg" className="text-[#64748B]">
+                  See how it works
+                </Button>
+              </a>
+            </div>
+
+            {/* Social proof */}
+            <div className="flex items-center gap-3 pt-1">
+              <div className="flex -space-x-2" aria-label="Trusted by 10,000+ teams">
+                {['SC', 'MR', 'PN', 'JL', 'AK'].map((init, i) => (
+                  <div
+                    key={init}
+                    className="w-7 h-7 rounded-full border-2 border-[#07070C] flex items-center justify-center text-white text-[9px] font-bold"
+                    style={{ background: `linear-gradient(135deg, hsl(${220 + i * 30},70%,55%), hsl(${250 + i * 20},65%,50%))`, zIndex: 5 - i }}
+                    aria-hidden="true"
+                  >
+                    {init}
+                  </div>
+                ))}
+              </div>
+              <div className="flex items-center gap-1.5 text-xs text-[#3F4D5C]">
+                <div className="flex gap-0.5" aria-label="5 star rating">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <Star key={i} size={10} className="text-amber-400 fill-amber-400" aria-hidden="true" />
+                  ))}
+                </div>
+                <span><span className="text-[#CBD5E1] font-semibold">4.9</span> · Trusted by 10,000+ teams</span>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Right — product preview */}
+          <motion.div className="relative" {...fadeUp(0.12)}>
+            {/* Browser frame */}
+            <div className="rounded-2xl border border-[rgba(255,255,255,0.08)] overflow-hidden shadow-[0_40px_100px_rgba(0,0,0,0.85),0_0_0_1px_rgba(99,102,241,0.06)]">
+              {/* Chrome bar */}
+              <div className="flex items-center gap-1.5 px-4 py-2.5 bg-[#0B0B12] border-b border-[rgba(255,255,255,0.05)]">
+                <div className="w-2.5 h-2.5 rounded-full bg-[#FF5F57]/55" />
+                <div className="w-2.5 h-2.5 rounded-full bg-[#FFBD2E]/55" />
+                <div className="w-2.5 h-2.5 rounded-full bg-[#28C840]/55" />
+                <div className="flex-1 mx-4 h-5 rounded-md bg-white/[0.025] flex items-center justify-center">
+                  <span className="text-[9px] text-[#2D3A4A] font-mono">app.intellmeet.io/room/q4-review</span>
+                </div>
+                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full border border-emerald-500/22 bg-emerald-500/7 text-emerald-400 text-[9px] font-semibold">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse-dot" />
+                  LIVE
+                </div>
+              </div>
+
+              {/* Video grid */}
+              <div className="grid grid-cols-2 gap-1.5 p-2.5 bg-[#050810]">
+                {[
+                  { name: 'Sarah K.',   active: true,  init: 'S', from: '#6366F1', to: '#7C3AED' },
+                  { name: 'Marcus R.',  active: false, init: 'M', from: '#10B981', to: '#059669' },
+                  { name: 'Priya N.',   active: false, init: 'P', from: '#F59E0B', to: '#D97706' },
+                  { name: 'You',        active: false, init: 'Y', from: '#EF4444', to: '#DC2626' },
+                ].map(({ name, active, init, from, to }) => (
+                  <div
+                    key={name}
+                    className={`aspect-video rounded-xl relative overflow-hidden flex items-center justify-center border transition-all ${
+                      active
+                        ? 'border-indigo-500/55 shadow-[0_0_0_2px_rgba(99,102,241,0.22)]'
+                        : 'border-white/[0.04]'
+                    }`}
+                    style={{ background: '#07101C' }}
+                  >
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold" style={{ background: `linear-gradient(135deg, ${from}, ${to})` }}>
+                      {init}
+                    </div>
+                    <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between">
+                      <span className="text-[9px] text-white/60 bg-black/50 rounded px-1.5 py-0.5">{name}</span>
+                      {active && (
+                        <div className="flex items-center gap-1 bg-black/55 rounded px-1.5 py-0.5">
+                          <Mic size={7} className="text-emerald-400" />
+                          <span className="text-[8px] text-emerald-400 font-medium">Speaking</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* AI ticker */}
+              <div className="flex items-center gap-3 px-4 py-2.5 border-t border-[rgba(255,255,255,0.04)] bg-[#0B0B12]">
+                <div className="w-5 h-5 rounded-lg bg-violet-500/12 flex items-center justify-center shrink-0">
+                  <Sparkles size={10} className="text-violet-400" />
+                </div>
+                <span className="text-[10px] text-[#475569] flex-1 truncate">
+                  Approved Q4 roadmap · 3 action items extracted · Sprint by Monday
+                </span>
+                <span className="text-[9px] text-[#2D3A4A] shrink-0">just now</span>
+              </div>
+            </div>
+
+            {/* Floating AI summary card */}
+            <motion.div
+              className="absolute -bottom-4 -left-5 hidden xl:block w-52 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0F0F18] shadow-2xl p-3.5"
+              animate={{ y: [0, -6, 0] }}
+              transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
+            >
+              <div className="flex items-center gap-2 mb-2.5">
+                <div className="w-5 h-5 rounded-lg bg-violet-500/10 flex items-center justify-center">
+                  <Brain size={10} className="text-violet-400" />
+                </div>
+                <span className="text-[10px] font-semibold text-[#CBD5E1]">AI Summary</span>
+                <span className="ml-auto text-[9px] text-emerald-400 font-semibold">Done</span>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                {['Roadmap approved', 'Sprint dates confirmed', 'Alex owns infra rollout'].map((item) => (
+                  <div key={item} className="flex items-center gap-1.5 text-[9px] text-[#475569]">
+                    <Check size={8} className="text-emerald-400 shrink-0" />
+                    {item}
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+
+            {/* Floating participants count */}
+            <motion.div
+              className="absolute -top-3 -right-3 hidden xl:flex items-center gap-2 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[#0F0F18] shadow-xl px-3 py-2"
+              animate={{ y: [0, -4, 0] }}
+              transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
+            >
+              <div className="flex -space-x-1.5">
+                {['S', 'M', 'P', 'Y'].map((l, i) => (
+                  <div key={l} className="w-5 h-5 rounded-full bg-indigo-500 border border-[#07070C] flex items-center justify-center text-white text-[8px] font-bold" style={{ zIndex: 4 - i }}>
+                    {l}
+                  </div>
+                ))}
+              </div>
+              <span className="text-[10px] text-[#64748B] font-medium">4 participants</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse-dot" />
+            </motion.div>
+          </motion.div>
+        </div>
+      </div>
+    </section>
+
+    {/* ════════════════════════════ LOGO MARQUEE ════════════════════════════ */}
+    <section className="py-10 border-y border-[rgba(255,255,255,0.04)] overflow-hidden relative" aria-label="Trusted by teams at">
+      <div className="absolute inset-y-0 left-0 w-24 z-10 pointer-events-none" style={{ background: 'linear-gradient(to right, #07070C, transparent)' }} />
+      <div className="absolute inset-y-0 right-0 w-24 z-10 pointer-events-none" style={{ background: 'linear-gradient(to left, #07070C, transparent)' }} />
+      <p className="text-center text-[0.625rem] text-[#2D3A4A] uppercase tracking-[0.15em] font-semibold mb-5">
+        Trusted by teams at
+      </p>
+      <div className="flex animate-marquee whitespace-nowrap gap-16" aria-hidden="true">
+        {[...LOGOS, ...LOGOS].map((name, i) => (
+          <span key={i} className="text-[#2D3A4A] text-sm font-semibold tracking-tight shrink-0 hover:text-[#3F4D5C] transition-colors">
+            {name}
+          </span>
+        ))}
+      </div>
+    </section>
+
+    {/* ════════════════════════════ STATS ════════════════════════════ */}
+    <section className="py-16 px-6" aria-label="Platform statistics">
+      <div className="max-w-[1120px] mx-auto">
+        <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-y divide-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.04)] rounded-2xl overflow-hidden">
+          {STATS.map(({ value, label }, i) => (
+            <motion.div key={label} className="flex flex-col items-center gap-1 py-8 px-6 bg-[#07070C] text-center" {...fadeUp(i * 0.06)}>
+              <p className="text-[1.875rem] font-bold text-[#F1F5F9] tracking-tight leading-none">{value}</p>
+              <p className="text-xs text-[#3F4D5C] font-medium mt-0.5">{label}</p>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    {/* ════════════════════════════ FEATURES ════════════════════════════ */}
+    <section id="features" className="py-20 px-6">
+      <div className="max-w-[1120px] mx-auto">
+        <motion.div className="mb-14" {...fadeUp()}>
+          <span className="text-label block mb-3">Platform</span>
+          <h2 className="text-h2 text-[#F1F5F9] max-w-lg">
+            Everything your team needs to collaborate
+          </h2>
+          <p className="text-[#64748B] mt-3 max-w-md text-[0.9375rem] leading-relaxed">
+            One workspace to run meetings, capture every insight, and ship faster.
+          </p>
+        </motion.div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 stagger">
+          {FEATURES.map(({ icon: Icon, label, desc, color, bg, border }) => (
+            <motion.div
+              key={label}
+              className={`group rounded-2xl border ${border} ${bg} p-5 hover:border-opacity-50 transition-all duration-200 hover:-translate-y-0.5 animate-fade-in cursor-default`}
+              whileHover={{ y: -2 }}
+              transition={{ duration: 0.15 }}
+            >
+              <div className={`w-9 h-9 rounded-xl ${bg} border ${border} flex items-center justify-center mb-4`}>
+                <Icon size={16} className={color} />
+              </div>
+              <h3 className="text-[0.875rem] font-semibold text-[#F1F5F9] mb-1.5 tracking-tight">{label}</h3>
+              <p className="text-xs text-[#64748B] leading-relaxed">{desc}</p>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    {/* ════════════════════════════ AI SECTION ════════════════════════════ */}
+    <section className="py-20 px-6 relative overflow-hidden border-t border-[rgba(255,255,255,0.035)]">
+      <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
+        <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse 80% 50% at 50% 60%, rgba(124,58,237,0.04) 0%, transparent 70%)' }} />
+      </div>
+      <div className="max-w-[1120px] mx-auto">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+          <motion.div {...fadeUp()}>
+            <span className="text-label block mb-3">AI Intelligence</span>
+            <h2 className="text-h2 text-[#F1F5F9] mb-4">
+              Your meetings,<br />
+              <span className="gradient-text">intelligently captured</span>
+            </h2>
+            <p className="text-[#64748B] text-[0.9375rem] leading-relaxed mb-8 max-w-sm">
+              IntellMeet listens, understands, and synthesises every meeting in real time. Never lose a decision, action item, or insight again.
+            </p>
+            <div className="flex flex-col gap-3.5">
+              {AI_FEATURES.map(({ icon: Icon, label, desc }) => (
+                <div key={label} className="flex items-start gap-3.5">
+                  <div className="w-8 h-8 rounded-xl bg-violet-500/8 border border-violet-500/14 flex items-center justify-center shrink-0 mt-0.5">
+                    <Icon size={14} className="text-violet-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-[#CBD5E1]">{label}</p>
+                    <p className="text-xs text-[#475569] mt-0.5 leading-relaxed">{desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+
+          {/* AI Panel preview */}
+          <motion.div {...fadeUp(0.1)}>
+            <div className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0F0F18] overflow-hidden shadow-[0_32px_80px_rgba(0,0,0,0.75)]">
+              <div className="flex items-center gap-2 px-4 py-3 border-b border-[rgba(255,255,255,0.05)] bg-[#0B0B12]">
+                <div className="w-5 h-5 rounded-lg bg-violet-500/12 flex items-center justify-center">
+                  <Brain size={10} className="text-violet-400" />
+                </div>
+                <span className="text-xs font-semibold text-[#CBD5E1]">AI Assistant</span>
+                <span className="ml-auto badge-ai px-2 py-0.5 rounded-full text-[10px] font-semibold">GPT-4o</span>
+              </div>
+
+              <div className="p-4 flex flex-col gap-3.5 min-h-[260px]">
+                <div className="rounded-xl bg-[rgba(124,58,237,0.055)] border border-violet-500/10 p-3.5">
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <Sparkles size={10} className="text-violet-400" />
+                    <span className="text-[10px] font-semibold text-violet-400 uppercase tracking-wide">Summary</span>
+                  </div>
+                  <p className="text-xs text-[#94A3B8] leading-relaxed">
+                    The team reviewed Q4 roadmap and approved the new onboarding flow. Three blockers identified around infrastructure capacity.
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-[10px] font-semibold text-[#2D3A4A] uppercase tracking-[0.1em] mb-2">Action Items</p>
+                  {[
+                    { text: 'Scale infra for launch',  owner: 'Alex',   priority: 'high' },
+                    { text: 'Finalise onboarding copy', owner: 'Sarah',  priority: 'medium' },
+                    { text: 'Send Figma file to team',  owner: 'Marcus', priority: 'low' },
+                  ].map(({ text, owner, priority }) => (
+                    <div key={text} className="flex items-center gap-2 py-1.5 border-b border-[rgba(255,255,255,0.04)] last:border-0">
+                      <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${priority === 'high' ? 'bg-red-400' : priority === 'medium' ? 'bg-amber-400' : 'bg-emerald-400'}`} />
+                      <span className="text-xs text-[#94A3B8] flex-1 truncate">{text}</span>
+                      <span className="text-[9px] text-[#3F4D5C] font-medium">{owner}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-auto flex items-center gap-2 rounded-xl bg-white/[0.025] border border-[rgba(255,255,255,0.055)] px-3 py-2.5">
+                  <span className="text-xs text-[#2D3A4A] flex-1">Ask AI about this meeting…</span>
+                  <ArrowRight size={12} className="text-[#3F4D5C]" />
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      </div>
+    </section>
+
+    {/* ════════════════════════════ SECURITY ════════════════════════════ */}
+    <section id="security" className="py-20 px-6 border-t border-[rgba(255,255,255,0.035)]">
+      <div className="max-w-[1120px] mx-auto">
+        <motion.div className="text-center mb-12" {...fadeUp()}>
+          <span className="text-label block mb-3">Security & Compliance</span>
+          <h2 className="text-h2 text-[#F1F5F9]">Enterprise-grade security, built in</h2>
+        </motion.div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 stagger">
+          {SECURITY.map(({ icon: Icon, title, desc }) => (
+            <motion.div
+              key={title}
+              className="rounded-2xl bg-[rgba(255,255,255,0.018)] border border-[rgba(255,255,255,0.06)] p-4.5 flex items-start gap-3.5 animate-fade-in hover:border-[rgba(255,255,255,0.1)] transition-colors group"
+              style={{ padding: '18px' }}
+            >
+              <div className="w-8 h-8 rounded-xl bg-indigo-500/7 border border-indigo-500/12 flex items-center justify-center shrink-0">
+                <Icon size={14} className="text-indigo-400" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-[#CBD5E1] mb-1 tracking-tight">{title}</p>
+                <p className="text-xs text-[#475569] leading-relaxed">{desc}</p>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    {/* ════════════════════════════ TESTIMONIALS ════════════════════════════ */}
+    <section className="py-20 px-6 border-t border-[rgba(255,255,255,0.035)]">
+      <div className="max-w-[1120px] mx-auto">
+        <motion.div className="text-center mb-12" {...fadeUp()}>
+          <span className="text-label block mb-3">Testimonials</span>
+          <h2 className="text-h2 text-[#F1F5F9]">Loved by modern teams</h2>
+        </motion.div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 stagger">
+          {TESTIMONIALS.map(({ quote, name, role, initials, stars }) => (
+            <motion.div
+              key={name}
+              className="rounded-2xl border border-[rgba(255,255,255,0.06)] bg-[#0F0F18] p-5 flex flex-col gap-4 animate-fade-in hover:border-[rgba(255,255,255,0.1)] transition-colors"
+            >
+              <div className="flex gap-0.5" aria-label={`${stars} out of 5 stars`}>
+                {Array.from({ length: stars }).map((_, i) => (
+                  <Star key={i} size={12} className="text-amber-400 fill-amber-400" aria-hidden="true" />
+                ))}
+              </div>
+              <p className="text-sm text-[#94A3B8] leading-relaxed flex-1">"{quote}"</p>
+              <div className="flex items-center gap-3">
+                <div
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0"
+                  style={{ background: 'linear-gradient(135deg, #6366F1, #7C3AED)' }}
+                  aria-hidden="true"
+                >
+                  {initials}
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-[#CBD5E1]">{name}</p>
+                  <p className="text-[10px] text-[#3F4D5C]">{role}</p>
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    {/* ════════════════════════════ PRICING ════════════════════════════ */}
+    <section id="pricing" className="py-20 px-6 border-t border-[rgba(255,255,255,0.035)]">
+      <div className="max-w-[1120px] mx-auto">
+        <motion.div className="text-center mb-12" {...fadeUp()}>
+          <span className="text-label block mb-3">Pricing</span>
+          <h2 className="text-h2 text-[#F1F5F9]">Simple, transparent pricing</h2>
+          <p className="text-[#64748B] text-sm mt-2">Start free. Upgrade when your team is ready.</p>
+        </motion.div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-3xl mx-auto stagger">
+          {PLANS.map(({ name, price, period, desc, features, cta, variant, highlight }) => (
+            <motion.div
+              key={name}
+              className={`rounded-2xl border p-6 flex flex-col gap-5 transition-all animate-fade-in ${
+                highlight
+                  ? 'border-indigo-500/35 bg-[rgba(99,102,241,0.04)] shadow-[0_0_50px_rgba(99,102,241,0.1)]'
+                  : 'border-[rgba(255,255,255,0.06)] bg-[#0F0F18]'
+              }`}
+            >
+              {highlight && (
+                <span className="self-start text-[10px] font-semibold text-indigo-300 bg-indigo-500/10 border border-indigo-500/18 px-2 py-0.5 rounded-full">
+                  Most popular
+                </span>
+              )}
+              <div>
+                <p className="text-sm font-semibold text-[#F1F5F9]">{name}</p>
+                <div className="flex items-baseline gap-1 mt-1.5">
+                  <span className="text-2xl font-bold text-[#F1F5F9] tracking-tight">{price}</span>
+                  {period && <span className="text-xs text-[#3F4D5C]">{period}</span>}
+                </div>
+                <p className="text-xs text-[#3F4D5C] mt-1 leading-relaxed">{desc}</p>
+              </div>
+              <div className="flex flex-col gap-2">
+                {features.map((f) => (
+                  <div key={f} className="flex items-center gap-2 text-xs text-[#94A3B8]">
+                    <Check size={12} className="text-emerald-400 shrink-0" aria-hidden="true" />
+                    {f}
+                  </div>
+                ))}
+              </div>
+              <Link to={ROUTES.REGISTER} className="mt-auto">
+                <Button variant={variant} size="md" className="w-full">{cta}</Button>
+              </Link>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    {/* ════════════════════════════ CTA STRIP ════════════════════════════ */}
+    <section className="py-20 px-6 relative overflow-hidden border-t border-[rgba(255,255,255,0.035)]">
+      <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[300px] rounded-full" style={{ background: 'radial-gradient(ellipse, rgba(99,102,241,0.07) 0%, transparent 70%)' }} />
+      </div>
+      <div className="max-w-xl mx-auto text-center relative">
+        <motion.div {...fadeUp()}>
+          <h2 className="text-h2 text-[#F1F5F9] mb-3">Start running smarter meetings</h2>
+          <p className="text-[#64748B] text-sm mb-8 leading-relaxed">
+            Join 10,000+ teams already using IntellMeet to save hours every week.
+          </p>
+          <div className="flex items-center justify-center gap-3 flex-wrap">
+            <Link to={ROUTES.REGISTER}>
+              <Button size="lg" rightIcon={<ArrowRight size={14} />}>Get started for free</Button>
+            </Link>
+            <Link to={ROUTES.LOGIN}>
+              <Button variant="ghost" size="lg" className="text-[#64748B]">Sign in →</Button>
+            </Link>
+          </div>
+          <p className="text-xs text-[#2D3A4A] mt-4">No credit card · Free forever plan · Cancel anytime</p>
+        </motion.div>
+      </div>
+    </section>
+
+    {/* ════════════════════════════ FOOTER ════════════════════════════ */}
+    <footer className="border-t border-[rgba(255,255,255,0.035)] py-12 px-6">
+      <div className="max-w-[1120px] mx-auto">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-8 mb-10">
+          <div className="col-span-2 md:col-span-1">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-6 h-6 rounded-lg bg-indigo-500 flex items-center justify-center">
+                <Zap size={12} className="text-white" strokeWidth={2.5} />
+              </div>
+              <span className="font-bold text-sm text-[#F1F5F9]">IntellMeet</span>
+            </div>
+            <p className="text-xs text-[#2D3A4A] leading-relaxed">
+              AI-powered meeting collaboration for modern enterprise teams.
+            </p>
+          </div>
+          {[
+            { label: 'Product',  links: ['Features', 'Pricing', 'Changelog', 'Roadmap'] },
+            { label: 'Company',  links: ['About', 'Blog', 'Careers', 'Press'] },
+            { label: 'Legal',    links: ['Privacy', 'Terms', 'Security', 'Status'] },
+          ].map(({ label, links }) => (
+            <div key={label}>
+              <p className="text-[10px] font-semibold text-[#2D3A4A] uppercase tracking-[0.1em] mb-3">{label}</p>
+              <div className="flex flex-col gap-2.5">
+                {links.map((l) => (
+                  <a key={l} href="#" className="text-xs text-[#3F4D5C] hover:text-[#94A3B8] transition-colors">{l}</a>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="border-t border-[rgba(255,255,255,0.035)] pt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <p className="text-[10px] text-[#2D3A4A]">© 2025 IntellMeet Inc. All rights reserved.</p>
+          <p className="text-[10px] text-[#2D3A4A]">Built for the next generation of remote work.</p>
+        </div>
+      </div>
+    </footer>
   </div>
 );
-
-/* ─── Home Page ────────────────────────────────── */
-const Home: React.FC = () => {
-  const handleCreate = () => {
-    const code = generateMeetingCode();
-    toast.success(`Meeting created! Code: ${code}`, { icon: '🚀' });
-  };
-
-  return (
-    <>
-      {/* ══ HERO ══ */}
-      <section className="hero">
-        <div className="hero__inner">
-          <motion.div className="hero__badge" variants={fadeUp} initial="hidden" animate="show" custom={0}>
-            <Badge variant="purple">✨ Now with AI-powered meeting intelligence</Badge>
-          </motion.div>
-          <motion.h1 className="hero__title" variants={fadeUp} initial="hidden" animate="show" custom={1}>
-            The meeting platform that <span>thinks ahead</span>
-          </motion.h1>
-          <motion.p className="hero__subtitle" variants={fadeUp} initial="hidden" animate="show" custom={2}>
-            IntelMeet combines HD video, AI intelligence, team collaboration, and project management — all in one premium workspace.
-          </motion.p>
-          <motion.div className="hero__actions" variants={fadeUp} initial="hidden" animate="show" custom={3}>
-            <Button variant="primary" size="lg" onClick={handleCreate}>🚀 Start a Meeting</Button>
-            <Button variant="outline" size="lg">Watch Demo</Button>
-          </motion.div>
-          <motion.div className="hero__social-proof" variants={fadeUp} initial="hidden" animate="show" custom={4}>
-            <div className="hero__avatars">
-              {AVATARS.map((a) => <div key={a} className="hero__avatar">{a}</div>)}
-            </div>
-            <span>Trusted by <strong>10,000+</strong> teams worldwide</span>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* ══ STATS ══ */}
-      <section className="stats">
-        <div className="stats__grid">
-          {STATS.map((s, i) => (
-            <FadeUp key={s.label} i={i}>
-              <div className="stats__item-value">{s.value}</div>
-              <div className="stats__item-label">{s.label}</div>
-            </FadeUp>
-          ))}
-        </div>
-      </section>
-
-      {/* ══ 1. AI-POWERED VIDEO MEETINGS ══ */}
-      <section className="product-section" id="features">
-        <SectionHeader
-          badge="🎥 Video Meetings"
-          title="HD video meetings built for teams"
-          subtitle="Everything you need for productive, professional meetings — from 1:1s to all-hands calls."
-        />
-        <div className="product-grid" style={{ maxWidth: 1100, margin: '0 auto' }}>
-          {VIDEO_FEATURES.map((f, i) => (
-            <FadeUp key={f.title} i={i % 4}>
-              <Card className="feature-card">
-                <div className="feature-card__icon">{f.icon}</div>
-                <h3 className="feature-card__title">{f.title}</h3>
-                <p className="feature-card__desc">{f.desc}</p>
-                <ul className="feature-card__items">
-                  {f.items.map((it) => <li key={it}>{it}</li>)}
-                </ul>
-              </Card>
-            </FadeUp>
-          ))}
-        </div>
-      </section>
-
-      {/* ══ 2. AI MEETING INTELLIGENCE — showcase split ══ */}
-      <section className="showcase showcase--alt" id="ai">
-        <div className="showcase__inner">
-          <div className="showcase__content">
-            <FadeUp><span className="showcase__label">🤖 AI Intelligence</span></FadeUp>
-            <FadeUp i={1}><h2 className="showcase__title">Your AI assistant for every meeting</h2></FadeUp>
-            <FadeUp i={2}><p className="showcase__desc">Stop taking notes. Let IntelMeet's AI capture every word, extract every action item, and deliver a clean summary — so you can stay fully present.</p></FadeUp>
-            <FadeUp i={3}>
-              <ul className="showcase__list">
-                {AI_FEATURES.map((f) => (
-                  <li key={f.title}>
-                    <span className="showcase__list-icon">✓</span>
-                    <div>
-                      <strong style={{ color: 'var(--text)', fontSize: '0.9rem' }}>{f.title}</strong>
-                      <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>{f.desc}</p>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </FadeUp>
-            <FadeUp i={4}><Button variant="primary" size="md" style={{ marginTop: '0.5rem' }}>Try AI Features →</Button></FadeUp>
-          </div>
-          <FadeUp i={2}>
-            <div className="showcase__visual">
-              <div className="mock-card-inner">
-                <div className="mock-tag">🤖 AI Summary</div>
-                <div className="mock-bar mock-bar--full" style={{ marginTop: '0.5rem' }} />
-                <div className="mock-bar mock-bar--med" />
-                <div className="mock-bar mock-bar--short" />
-              </div>
-              <div className="mock-card-inner">
-                <div className="mock-tag mock-tag--green">✅ Action Items (3)</div>
-                {['Design review by Friday', 'Send proposal to client', 'Schedule follow-up'].map((t) => (
-                  <div key={t} className="mock-row" style={{ marginTop: '0.35rem' }}>
-                    <div className="mock-dot" style={{ width: 16, height: 16 }} />
-                    <div className="mock-bar mock-bar--full" style={{ height: 8 }} />
-                  </div>
-                ))}
-              </div>
-              <div className="mock-grid">
-                <div className="mock-stat"><div className="mock-stat-val">98%</div><div className="mock-stat-lbl">Accuracy</div></div>
-                <div className="mock-stat"><div className="mock-stat-val">30+</div><div className="mock-stat-lbl">Languages</div></div>
-              </div>
-            </div>
-          </FadeUp>
-        </div>
-      </section>
-
-      {/* ══ 3. TEAM COLLABORATION ══ */}
-      <section className="product-section product-section--dark" id="collaboration">
-        <SectionHeader
-          badge="💬 Collaboration"
-          title="Work together, not just meet together"
-          subtitle="Persistent chat, shared notes, and file sharing keep your team aligned between meetings."
-          light
-        />
-        <div className="product-grid" style={{ maxWidth: 1100, margin: '0 auto' }}>
-          {COLLAB_FEATURES.map((f, i) => (
-            <FadeUp key={f.title} i={i % 4}>
-              <Card className="feature-card">
-                <div className="feature-card__icon">{f.icon}</div>
-                <h3 className="feature-card__title">{f.title}</h3>
-                <p className="feature-card__desc">{f.desc}</p>
-              </Card>
-            </FadeUp>
-          ))}
-        </div>
-      </section>
-
-      {/* ══ 4. PROJECT & TASK MANAGEMENT — showcase split ══ */}
-      <section className="showcase" id="tasks">
-        <div className="showcase__inner showcase__inner--reverse">
-          <FadeUp i={2}>
-            <div className="showcase__visual">
-              <div className="mock-card-inner">
-                <div className="mock-tag mock-tag--blue">📌 Sprint Board</div>
-                {[['To Do', '40%'], ['In Progress', '65%'], ['Done', '90%']].map(([label, pct]) => (
-                  <div key={label} style={{ marginTop: '0.5rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '4px' }}>
-                      <span>{label}</span><span>{pct}</span>
-                    </div>
-                    <div className="mock-progress">
-                      <div className="mock-progress-fill" style={{ width: pct }} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="mock-grid">
-                <div className="mock-stat"><div className="mock-stat-val">24</div><div className="mock-stat-lbl">Open Tasks</div></div>
-                <div className="mock-stat"><div className="mock-stat-val">8</div><div className="mock-stat-lbl">Completed</div></div>
-              </div>
-              <div className="mock-card-inner">
-                {[{ tag: '🔴 High', bar: '80%' }, { tag: '🟡 Medium', bar: '55%' }, { tag: '🟢 Low', bar: '30%' }].map((r) => (
-                  <div key={r.tag} className="mock-row" style={{ marginBottom: '0.4rem' }}>
-                    <div className="mock-dot" style={{ width: 20, height: 20 }} />
-                    <div className="mock-lines">
-                      <div className="mock-bar mock-bar--full mock-bar--accent" style={{ height: 7, width: r.bar }} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </FadeUp>
-          <div className="showcase__content">
-            <FadeUp><span className="showcase__label">📌 Task Management</span></FadeUp>
-            <FadeUp i={1}><h2 className="showcase__title">From meeting to action — instantly</h2></FadeUp>
-            <FadeUp i={2}><p className="showcase__desc">IntelMeet connects your conversations directly to your workflow. AI extracts action items and drops them straight into your Kanban board.</p></FadeUp>
-            <FadeUp i={3}>
-              <div className="product-grid--3" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem', marginTop: '0.5rem' }}>
-                {TASK_FEATURES.map((f) => (
-                  <div key={f.title} style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
-                    <span style={{ fontSize: '1.3rem' }}>{f.icon}</span>
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text)' }}>{f.title}</div>
-                      <div style={{ fontSize: '0.83rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>{f.desc}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </FadeUp>
-          </div>
-        </div>
-      </section>
-
-      {/* ══ 5. ANALYTICS DASHBOARD ══ */}
-      <section className="product-section product-section--alt" id="analytics">
-        <SectionHeader
-          badge="📊 Analytics"
-          title="Data-driven meeting culture"
-          subtitle="Understand how your team meets, where time goes, and how to improve — with beautiful, actionable reports."
-        />
-        <div className="product-grid--3" style={{ maxWidth: 1000, margin: '0 auto' }}>
-          {ANALYTICS_FEATURES.map((f, i) => (
-            <FadeUp key={f.title} i={i}>
-              <Card className="feature-card">
-                <div className="feature-card__icon">{f.icon}</div>
-                <h3 className="feature-card__title">{f.title}</h3>
-                <p className="feature-card__desc">{f.desc}</p>
-              </Card>
-            </FadeUp>
-          ))}
-        </div>
-      </section>
-
-      {/* ══ 6. ENTERPRISE SECURITY ══ */}
-      <section className="product-section" id="security">
-        <SectionHeader
-          badge="🔒 Security"
-          title="Enterprise-grade security, built-in"
-          subtitle="IntelMeet is designed from the ground up with security and compliance as first-class citizens."
-        />
-        <div className="product-grid" style={{ maxWidth: 1100, margin: '0 auto' }}>
-          {SECURITY_FEATURES.map((f, i) => (
-            <FadeUp key={f.title} i={i % 4}>
-              <Card className="feature-card">
-                <div className="feature-card__icon">{f.icon}</div>
-                <h3 className="feature-card__title">{f.title}</h3>
-                <p className="feature-card__desc">{f.desc}</p>
-              </Card>
-            </FadeUp>
-          ))}
-        </div>
-      </section>
-
-      {/* ══ TESTIMONIALS ══ */}
-      <section className="testimonials">
-        <SectionHeader
-          badge="❤️ Loved by teams"
-          title="What our customers say"
-          subtitle="Thousands of teams have already transformed how they meet with IntelMeet."
-        />
-        <div className="testimonials__grid">
-          {TESTIMONIALS.map((t, i) => (
-            <FadeUp key={t.name} i={i}>
-              <Card className="testimonial-card">
-                <div className="testimonial-card__stars">★★★★★</div>
-                <p className="testimonial-card__quote">"{t.quote}"</p>
-                <div className="testimonial-card__author">
-                  <div className="testimonial-card__avatar">{t.avatar}</div>
-                  <div>
-                    <div className="testimonial-card__name">{t.name}</div>
-                    <div className="testimonial-card__role">{t.role}</div>
-                  </div>
-                </div>
-              </Card>
-            </FadeUp>
-          ))}
-        </div>
-      </section>
-
-      {/* ══ PRICING ══ */}
-      <section className="pricing" id="pricing">
-        <SectionHeader
-          badge="💳 Pricing"
-          title="Simple, transparent pricing"
-          subtitle="Start free. Upgrade when you need to. No hidden fees, ever."
-        />
-        <div className="pricing__grid">
-          {PLANS.map((plan, i) => (
-            <FadeUp key={plan.name} i={i}>
-              <Card className={`pricing-card ${plan.featured ? 'pricing-card--featured' : ''}`}>
-                <div className="pricing-card__name">{plan.name}</div>
-                <div className="pricing-card__price">
-                  {plan.price}
-                  {plan.period && <span>{plan.period}</span>}
-                </div>
-                <p className="pricing-card__desc">{plan.desc}</p>
-                <div className="pricing-card__divider" />
-                <ul className="pricing-card__features">
-                  {plan.features.map((f) => <li key={f} className="pricing-card__feature">{f}</li>)}
-                </ul>
-                <Button
-                  variant={plan.featured ? 'white' : 'primary'}
-                  size="md"
-                  onClick={handleCreate}
-                  style={{ marginTop: 'auto' }}
-                >
-                  {plan.cta}
-                </Button>
-              </Card>
-            </FadeUp>
-          ))}
-        </div>
-      </section>
-
-      {/* ══ CTA ══ */}
-      <section className="cta-section">
-        <motion.div
-          className="cta-section__inner"
-          variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }}
-        >
-          <h2 className="cta-section__title">Ready to transform how your team meets?</h2>
-          <p className="cta-section__sub">
-            Join 10,000+ teams already using IntelMeet. Free to start — no credit card required.
-          </p>
-          <div className="cta-section__actions">
-            <Button variant="white" size="lg" onClick={handleCreate}>
-              Get Started Free
-            </Button>
-            <Button variant="outline" size="lg" style={{ color: '#ffffff', borderColor: '#ffffff' }}>
-              Schedule a Demo
-            </Button>
-          </div>
-        </motion.div>
-      </section>
-    </>
-  );
-};
 
 export default Home;

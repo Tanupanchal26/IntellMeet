@@ -1,121 +1,139 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Plus, Hash, Calendar, Clock, Video, ArrowRight, Users } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { meetingService } from '../services/meeting.service';
+import { MEETING_ROUTE } from '../utils/constants';
+import Card from '../components/common/Card';
 import Button from '../components/common/Button';
-import { ROUTES } from '../utils/constants';
+import Badge from '../components/common/Badge';
+import Modal from '../components/common/Modal';
+import toast from 'react-hot-toast';
 
-const Lobby: React.FC = () => {
-  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
-  const [isMuted, setIsMuted] = useState(false);
-  const [isVideoOff, setIsVideoOff] = useState(false);
-  const videoRef = useRef<HTMLVideoElement>(null);
+const fmt = (iso: string) => new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+const MOCK_MEETINGS = [
+  { _id: 'm1', title: 'Q4 Product Review', roomId: 'room-abc', isActive: true,  startedAt: new Date().toISOString() },
+  { _id: 'm2', title: 'Design System Sync', roomId: 'room-def', isActive: false, startedAt: new Date(Date.now() - 86400000).toISOString() },
+  { _id: 'm3', title: 'Backend Architecture', roomId: 'room-ghi', isActive: false, startedAt: new Date(Date.now() - 172800000).toISOString() },
+];
+
+const Lobby = () => {
   const navigate = useNavigate();
-  const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
+  const [showCreate, setShowCreate] = useState(searchParams.get('new') === '1');
+  const [title, setTitle] = useState('');
+  const [joinId, setJoinId] = useState('');
+  const qc = useQueryClient();
 
-  useEffect(() => {
-    async function startCamera() {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-        setLocalStream(stream);
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-        }
-      } catch (err) {
-        console.error('Error opening video devices: ', err);
-      }
-    }
-    startCamera();
-
-    return () => {
-      if (localStream) {
-        localStream.getTracks().forEach(track => track.stop());
-      }
-    };
-  }, []);
-
-  const handleToggleMute = () => {
-    if (localStream) {
-      const audioTrack = localStream.getAudioTracks()[0];
-      if (audioTrack) {
-        audioTrack.enabled = !audioTrack.enabled;
-        setIsMuted(!audioTrack.enabled);
-      }
-    }
-  };
-
-  const handleToggleVideo = () => {
-    if (localStream) {
-      const videoTrack = localStream.getVideoTracks()[0];
-      if (videoTrack) {
-        videoTrack.enabled = !videoTrack.enabled;
-        setIsVideoOff(!videoTrack.enabled);
-      }
-    }
-  };
+  const createMutation = useMutation({
+    mutationFn: () => meetingService.create({ title: title || 'Quick Meeting' }) as Promise<any>,
+    onSuccess: (data: any) => {
+      qc.invalidateQueries({ queryKey: ['meetings'] });
+      toast.success('Meeting created!');
+      setShowCreate(false);
+      navigate(MEETING_ROUTE(data._id || data.id || 'm_new'));
+    },
+    onError: () => toast.error('Failed to create meeting'),
+  });
 
   const handleJoin = () => {
-    // Navigate to the MeetingRoom page with URL params
-    const roomCode = id || 'ROOM-XYZ';
-    navigate(ROUTES.MEETING.replace(':id', roomCode));
+    if (!joinId.trim()) return;
+    navigate(MEETING_ROUTE(joinId.trim()));
   };
 
   return (
-    <div style={{
-      minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-      background: '#0F172A', color: '#ffffff', padding: '24px', boxSizing: 'border-box'
-    }}>
-      <div style={{ width: '100%', maxWidth: '640px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
-        <div style={{ textAlign: 'center' }}>
-          <h2 style={{ fontSize: '1.75rem', fontWeight: 700, margin: 0 }}>Join Meeting Room</h2>
-          <p style={{ color: '#94A3B8', fontSize: '0.9rem', marginTop: '6px' }}>Check your camera and audio settings before joining</p>
+    <div className="flex flex-col gap-6 animate-fade-in">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-[var(--color-text)]">Meetings</h1>
+          <p className="text-sm text-[var(--color-text-muted)]">Create, join or schedule meetings</p>
         </div>
+        <Button onClick={() => setShowCreate(true)} className="gap-2"><Plus size={15} /> New Meeting</Button>
+      </div>
 
-        {/* Video Preview */}
-        <div style={{
-          position: 'relative', background: '#1E293B', borderRadius: '12px', overflow: 'hidden',
-          aspectRatio: '16/9', border: '1px solid #334155', display: 'flex', alignItems: 'center', justifyContent: 'center'
-        }}>
-          {localStream && !isVideoOff ? (
-            <video
-              ref={videoRef}
-              autoPlay
-              playsInline
-              muted
-              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-            />
-          ) : (
-            <div style={{ color: '#94A3B8', fontSize: '1.1rem' }}>Camera is turned off</div>
-          )}
+      {/* Action cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Create */}
+        <Card hover className="flex flex-col gap-4 cursor-pointer" onClick={() => setShowCreate(true)}>
+          <div className="w-12 h-12 rounded-xl bg-[var(--color-primary)]/15 flex items-center justify-center">
+            <Video size={22} className="text-[var(--color-primary)]" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-[var(--color-text)] mb-1">Start Instant Meeting</h3>
+            <p className="text-sm text-[var(--color-text-muted)]">Create a new meeting room and invite participants</p>
+          </div>
+          <Button className="gap-2 w-fit">Start Now <ArrowRight size={13} /></Button>
+        </Card>
 
-          <div style={{
-            position: 'absolute', bottom: '16px', left: '50%', transform: 'translateX(-50%)',
-            display: 'flex', gap: '12px', background: 'rgba(15, 23, 42, 0.6)', padding: '8px 16px',
-            borderRadius: '99px', backdropFilter: 'blur(4px)'
-          }}>
-            <button
-              onClick={handleToggleMute}
-              style={{
-                background: isMuted ? '#EF4444' : 'transparent', border: 'none', color: '#fff',
-                fontSize: '1.2rem', cursor: 'pointer', width: '36px', height: '36px', borderRadius: '50%'
-              }}
-            >
-              {isMuted ? '🔇' : '🎙️'}
-            </button>
-            <button
-              onClick={handleToggleVideo}
-              style={{
-                background: isVideoOff ? '#EF4444' : 'transparent', border: 'none', color: '#fff',
-                fontSize: '1.2rem', cursor: 'pointer', width: '36px', height: '36px', borderRadius: '50%'
-              }}
-            >
-              {isVideoOff ? '📷' : '📹'}
-            </button>
+        {/* Join */}
+        <Card hover className="flex flex-col gap-4">
+          <div className="w-12 h-12 rounded-xl bg-blue-500/15 flex items-center justify-center">
+            <Hash size={22} className="text-blue-400" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-[var(--color-text)] mb-1">Join by Room ID</h3>
+            <p className="text-sm text-[var(--color-text-muted)]">Enter a meeting ID or link to join instantly</p>
+          </div>
+          <div className="flex gap-2">
+            <input value={joinId} onChange={e => setJoinId(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleJoin()} placeholder="Enter room ID..." className="input-dark flex-1 text-sm py-2" />
+            <Button onClick={handleJoin} variant="secondary">Join</Button>
+          </div>
+        </Card>
+      </div>
+
+      {/* Schedule card */}
+      <Card className="flex items-center gap-4 cursor-pointer hover:border-[var(--color-primary)]/40 transition-colors">
+        <div className="w-10 h-10 rounded-xl bg-yellow-500/15 flex items-center justify-center flex-shrink-0">
+          <Calendar size={18} className="text-yellow-400" />
+        </div>
+        <div className="flex-1">
+          <p className="text-sm font-semibold text-[var(--color-text)]">Schedule for later</p>
+          <p className="text-xs text-[var(--color-text-muted)]">Plan a future meeting and send calendar invites</p>
+        </div>
+        <Badge variant="info">Coming soon</Badge>
+      </Card>
+
+      {/* Recent meetings */}
+      <div>
+        <h2 className="font-semibold text-[var(--color-text)] mb-3">Recent Meetings</h2>
+        <div className="flex flex-col gap-2">
+          {MOCK_MEETINGS.map(m => (
+            <div key={m._id} className="flex items-center gap-4 p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] hover:border-[var(--color-primary)]/30 transition-all cursor-pointer" onClick={() => navigate(MEETING_ROUTE(m._id))}>
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${m.isActive ? 'bg-green-500/15' : 'bg-[var(--color-surface-2)]'}`}>
+                <Video size={16} className={m.isActive ? 'text-green-400' : 'text-[var(--color-text-muted)]'} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-[var(--color-text)] truncate">{m.title}</p>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <Clock size={11} className="text-[var(--color-text-dim)]" />
+                  <span className="text-xs text-[var(--color-text-dim)]">{fmt(m.startedAt)}</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                {m.isActive ? <Badge variant="success">Live</Badge> : <Badge variant="default">Ended</Badge>}
+                <Button variant="ghost" size="sm" className="gap-1.5">Join <ArrowRight size={12} /></Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Create modal */}
+      <Modal open={showCreate} onClose={() => setShowCreate(false)} title="Start New Meeting">
+        <div className="flex flex-col gap-4">
+          <div>
+            <label className="text-xs font-medium text-[var(--color-text-muted)] block mb-1.5">Meeting Title</label>
+            <input value={title} onChange={e => setTitle(e.target.value)} onKeyDown={e => e.key === 'Enter' && createMutation.mutate()} placeholder="e.g. Product Sync, Sprint Review..." className="input-dark" />
+          </div>
+          <div className="flex gap-3">
+            <Button variant="secondary" className="flex-1" onClick={() => setShowCreate(false)}>Cancel</Button>
+            <Button loading={createMutation.isPending} onClick={() => createMutation.mutate()} className="flex-1 gap-2">
+              <Video size={14} /> Start Meeting
+            </Button>
           </div>
         </div>
-
-        <Button variant="primary" size="lg" onClick={handleJoin} style={{ width: '100%' }}>
-          Enter Meeting Room
-        </Button>
-      </div>
+      </Modal>
     </div>
   );
 };

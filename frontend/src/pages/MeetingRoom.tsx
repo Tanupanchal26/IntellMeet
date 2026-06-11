@@ -1,263 +1,253 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  MessageSquare, Users, Brain, FileText, Zap,
+  PhoneOff, Mic, MicOff, Video, VideoOff,
+  Monitor, Circle, Hand, Smile, MoreHorizontal,
+  ChevronRight, Maximize2, Minimize2,
+} from 'lucide-react';
+import { clsx } from 'clsx';
 import VideoGrid from '../components/meeting/VideoGrid';
 import Controls from '../components/meeting/Controls';
-import ParticipantList from '../components/meeting/ParticipantList';
 import ChatBox from '../components/meeting/ChatBox';
-import ScreenShare from '../components/meeting/ScreenShare';
+import ParticipantList from '../components/meeting/ParticipantList';
 import TranscriptPanel from '../components/ai/TranscriptPanel';
+import SummaryCard from '../components/ai/SummaryCard';
 import ActionItems from '../components/ai/ActionItems';
-import { ROUTES } from '../utils/constants';
+import AIAssistant from '../components/ai/AIAssistant';
+import { useMeetingStore } from '../store/meeting.store';
+import { useWebRTC } from '../hooks/useWebRTC';
+import { useAuthStore } from '../store/auth.store';
+import Badge from '../components/common/Badge';
 
-interface Participant {
-  id: string;
-  name: string;
-  isMuted: boolean;
-  isVideoOff: boolean;
-  isHost?: boolean;
-}
+type Panel   = 'chat' | 'participants' | 'ai' | 'notes';
+type AITab   = 'summary' | 'transcript' | 'actions' | 'assistant';
 
-interface ChatMessage {
-  sender: string;
-  text: string;
-  timestamp: string;
-}
+const PANELS: { id: Panel; label: string; icon: React.ElementType }[] = [
+  { id: 'chat',         label: 'Chat',    icon: MessageSquare },
+  { id: 'participants', label: 'People',  icon: Users         },
+  { id: 'ai',          label: 'AI',      icon: Brain         },
+  { id: 'notes',       label: 'Notes',   icon: FileText      },
+];
 
-interface TranscriptSegment {
-  speaker: string;
-  text: string;
-  time: string;
-}
+const AI_TABS: { id: AITab; label: string }[] = [
+  { id: 'summary',    label: 'Summary'    },
+  { id: 'transcript', label: 'Transcript' },
+  { id: 'actions',    label: 'Actions'    },
+  { id: 'assistant',  label: 'Chat'       },
+];
 
-interface ActionItem {
-  id: string;
-  task: string;
-  assignee: string;
-  dueDate: string;
-  status: 'Pending' | 'Completed';
-}
+/* ── AI sub-panel ── */
+const AIPanel = ({ meetingId }: { meetingId: string }) => {
+  const [tab, setTab] = useState<AITab>('summary');
+  return (
+    <div className="flex flex-col h-full">
+      <div className="flex gap-0.5 px-2 pt-2 shrink-0" role="tablist" aria-label="AI panel tabs">
+        {AI_TABS.map(({ id, label }) => (
+          <button
+            key={id}
+            role="tab"
+            aria-selected={tab === id}
+            onClick={() => setTab(id)}
+            className={clsx(
+              'flex-1 py-2 text-[10px] font-semibold rounded-lg transition-all relative',
+              tab === id
+                ? 'text-indigo-300 bg-indigo-500/8'
+                : 'text-[#2D3A4A] hover:text-[#64748B] hover:bg-white/[0.03]'
+            )}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      <div className="flex-1 overflow-y-auto" role="tabpanel">
+        {tab === 'transcript' && <TranscriptPanel />}
+        {tab === 'summary'    && <SummaryCard meetingId={meetingId} />}
+        {tab === 'actions'    && <ActionItems meetingId={meetingId} />}
+        {tab === 'assistant'  && <AIAssistant meetingId={meetingId} />}
+      </div>
+    </div>
+  );
+};
 
-const MeetingRoom: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
+/* ── Notes sub-panel ── */
+const NotesPanel = () => {
+  const [notes, setNotes] = useState('');
+  return (
+    <div className="p-3 h-full flex flex-col gap-3">
+      <div className="flex items-center justify-between">
+        <p className="text-[10px] font-semibold text-[#2D3A4A] uppercase tracking-[0.1em]">Meeting Notes</p>
+        <button className="text-[10px] text-indigo-400 hover:text-indigo-300 transition-colors font-medium">Save</button>
+      </div>
+      <textarea
+        value={notes}
+        onChange={(e) => setNotes(e.target.value)}
+        placeholder="Type your notes here…"
+        aria-label="Meeting notes"
+        className={clsx(
+          'flex-1 resize-none text-xs text-[#CBD5E1] leading-relaxed',
+          'bg-transparent border-none outline-none placeholder:text-[#2D3A4A]',
+        )}
+        style={{ minHeight: 200 }}
+      />
+    </div>
+  );
+};
 
-  // Local settings
-  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
-  const [isMuted, setIsMuted] = useState(false);
-  const [isVideoOff, setIsVideoOff] = useState(false);
-  const [isSharing, setIsSharing] = useState(false);
-  const [shareStream, setShareStream] = useState<MediaStream | null>(null);
+/* ── Main component ── */
+const MeetingRoom = () => {
+  const { id }     = useParams<{ id: string }>();
+  const navigate   = useNavigate();
+  const { user }   = useAuthStore();
 
-  // Panels toggle
-  const [activePanel, setActivePanel] = useState<'chat' | 'participants' | 'transcript' | 'actions'>('chat');
+  const [activePanel, setActivePanel] = useState<Panel>('chat');
+  const [panelOpen,   setPanelOpen]   = useState(true);
 
-  // Dummy State
-  const [participants, setParticipants] = useState<Participant[]>([
-    { id: 'user-1', name: 'Sarah Chen', isMuted: false, isVideoOff: false, isHost: true },
-    { id: 'user-2', name: 'Marcus Williams', isMuted: true, isVideoOff: false },
-    { id: 'user-3', name: 'Priya Sharma', isMuted: false, isVideoOff: true }
-  ]);
-
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    { sender: 'Sarah Chen', text: 'Hey everyone, let\'s review the layout changes.', timestamp: '11:00 AM' },
-    { sender: 'Marcus Williams', text: 'Sure, I can share my screen.', timestamp: '11:01 AM' }
-  ]);
-
-  const [transcript, setTranscript] = useState<TranscriptSegment[]>([
-    { speaker: 'Sarah Chen', text: 'Okay, let\'s get this review started. Marcus, please share the UI layout.', time: '11:00 AM' },
-    { speaker: 'Marcus Williams', text: 'I am launching the screen sharing. Priya, can you see it?', time: '11:01 AM' }
-  ]);
-
-  const [actionItems, setActionItems] = useState<ActionItem[]>([
-    { id: 'act-1', task: 'Implement full project folder structure', assignee: 'Developer', dueDate: 'Friday', status: 'Pending' },
-    { id: 'act-2', task: 'Review UI layout with product team', assignee: 'Sarah Chen', dueDate: 'Monday', status: 'Pending' }
-  ]);
+  const { setCurrentMeeting, isRecording, currentMeeting } = useMeetingStore();
+  const { localStreamRef } = useWebRTC({ roomId: id ?? '', userId: user?.id ?? '' });
 
   useEffect(() => {
-    async function startMedia() {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-        setLocalStream(stream);
-      } catch (err) {
-        console.error('Error getting media devices: ', err);
-      }
-    }
-    startMedia();
+    if (id) setCurrentMeeting({ id, title: 'Live Meeting', roomId: id, host: user?.id ?? '' });
+    return () => setCurrentMeeting(null);
+  }, [id, user?.id, setCurrentMeeting]);
 
-    return () => {
-      if (localStream) {
-        localStream.getTracks().forEach(track => track.stop());
-      }
-    };
-  }, []);
+  const meetingTitle = currentMeeting?.title ?? 'Meeting';
 
-  const handleToggleMute = () => {
-    if (localStream) {
-      localStream.getAudioTracks().forEach(track => {
-        track.enabled = !track.enabled;
-        setIsMuted(!track.enabled);
-      });
-    }
-  };
-
-  const handleToggleVideo = () => {
-    if (localStream) {
-      localStream.getVideoTracks().forEach(track => {
-        track.enabled = !track.enabled;
-        setIsVideoOff(!track.enabled);
-      });
-    }
-  };
-
-  const handleToggleShare = async () => {
-    if (isSharing) {
-      if (shareStream) {
-        shareStream.getTracks().forEach(track => track.stop());
-        setShareStream(null);
-      }
-      setIsSharing(false);
-    } else {
-      try {
-        const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-        setShareStream(stream);
-        setIsSharing(true);
-        stream.getVideoTracks()[0].onended = () => {
-          setIsSharing(false);
-          setShareStream(null);
-        };
-      } catch (err) {
-        console.error('Error sharing screen: ', err);
-      }
-    }
-  };
-
-  const handleSendMessage = (text: string) => {
-    setMessages(prev => [...prev, {
-      sender: 'You',
-      text,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    }]);
-  };
-
-  const handleToggleActionStatus = (itemId: string) => {
-    setActionItems(prev => prev.map(item =>
-      item.id === itemId ? { ...item, status: item.status === 'Completed' ? 'Pending' : 'Completed' } : item
-    ));
-  };
-
-  const handleLeave = () => {
-    if (localStream) {
-      localStream.getTracks().forEach(t => t.stop());
-    }
-    if (shareStream) {
-      shareStream.getTracks().forEach(t => t.stop());
-    }
-    navigate(ROUTES.DASHBOARD);
-  };
+  const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: '#111827', overflow: 'hidden' }}>
-      {/* Top Header Bar */}
-      <div style={{
-        height: '60px', borderBottom: '1px solid #1F2937', padding: '0 24px',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: '#fff'
-      }}>
-        <div>
-          <span style={{ fontSize: '1.1rem', fontWeight: 600 }}>Meeting: <strong style={{ color: '#8B5CF6' }}>{id}</strong></span>
+    <div className="fixed inset-0 flex flex-col bg-[#050810] overflow-hidden" style={{ zIndex: 'var(--z-max)' }}>
+
+      {/* ── Top bar ── */}
+      <div className="flex items-center justify-between px-4 py-2.5 border-b border-[rgba(255,255,255,0.05)] shrink-0" style={{ background: 'rgba(7,7,12,0.9)', backdropFilter: 'blur(12px)' }}>
+        <div className="flex items-center gap-3">
+          {/* Brand */}
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-lg bg-indigo-500 flex items-center justify-center shadow-[0_0_12px_rgba(99,102,241,0.3)]">
+              <Zap size={12} className="text-white" strokeWidth={2.5} aria-hidden="true" />
+            </div>
+            <span className="text-xs font-bold text-[#CBD5E1] hidden sm:block tracking-tight">IntellMeet</span>
+          </div>
+
+          <div className="w-px h-4 bg-[rgba(255,255,255,0.08)]" aria-hidden="true" />
+
+          {/* Meeting info */}
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-semibold text-[#F1F5F9] hidden sm:block tracking-tight">{meetingTitle}</p>
+            {id && (
+              <code className="text-[10px] text-[#2D3A4A] bg-white/[0.04] border border-white/[0.06] rounded-md px-1.5 py-0.5">
+                #{id.slice(0, 8)}
+              </code>
+            )}
+          </div>
         </div>
-        <div style={{ display: 'flex', gap: '8px' }}>
+
+        <div className="flex items-center gap-2">
+          {/* Recording indicator */}
+          {isRecording && (
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-red-500/22 bg-red-500/7 text-red-400 text-[10px] font-semibold" role="status" aria-live="polite">
+              <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-record" aria-hidden="true" />
+              REC
+            </div>
+          )}
+
+          {/* Live badge */}
+          <Badge variant="live" dot pulse>Live</Badge>
+
+          <span className="text-xs text-[#3F4D5C] tabular-nums hidden sm:block" aria-label={`Current time: ${now}`}>
+            {now}
+          </span>
+
+          {/* Toggle panel */}
           <button
-            onClick={() => setActivePanel('chat')}
-            style={{
-              padding: '6px 12px', background: activePanel === 'chat' ? '#374151' : 'transparent',
-              color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.85rem'
-            }}
+            onClick={() => setPanelOpen(v => !v)}
+            className="p-1.5 rounded-md text-[#3F4D5C] hover:bg-white/[0.05] hover:text-[#94A3B8] transition-colors"
+            aria-label={panelOpen ? 'Close side panel' : 'Open side panel'}
+            aria-expanded={panelOpen}
           >
-            💬 Chat
-          </button>
-          <button
-            onClick={() => setActivePanel('participants')}
-            style={{
-              padding: '6px 12px', background: activePanel === 'participants' ? '#374151' : 'transparent',
-              color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.85rem'
-            }}
-          >
-            👥 People ({participants.length + 1})
-          </button>
-          <button
-            onClick={() => setActivePanel('transcript')}
-            style={{
-              padding: '6px 12px', background: activePanel === 'transcript' ? '#374151' : 'transparent',
-              color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.85rem'
-            }}
-          >
-            📝 Transcript
-          </button>
-          <button
-            onClick={() => setActivePanel('actions')}
-            style={{
-              padding: '6px 12px', background: activePanel === 'actions' ? '#374151' : 'transparent',
-              color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.85rem'
-            }}
-          >
-            ✅ Actions
+            <ChevronRight size={14} className={clsx('transition-transform duration-200', panelOpen && 'rotate-180')} />
           </button>
         </div>
       </div>
 
-      {/* Middle Layout (Streams and Side panel) */}
-      <div style={{ flex: 1, display: 'flex', position: 'relative', overflow: 'hidden' }}>
-        {/* Left pane: Video screens */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
-          {isSharing ? (
-            <div style={{ display: 'flex', flex: 1, flexDirection: 'row', overflow: 'hidden' }}>
-              <ScreenShare shareStream={shareStream} sharingUser="You" />
-              <div style={{ width: '280px', display: 'flex', flexDirection: 'column', gap: '12px', padding: '16px' }}>
-                <VideoGrid participants={participants} localStream={localStream} remoteStreams={{}} />
+      {/* ── Body ── */}
+      <div className="flex flex-1 min-h-0">
+
+        {/* Video area */}
+        <div className="flex-1 flex flex-col min-w-0 relative">
+          <div className="flex-1 relative overflow-hidden">
+            <VideoGrid />
+          </div>
+          <Controls />
+        </div>
+
+        {/* Right panel */}
+        <AnimatePresence>
+          {panelOpen && (
+            <motion.div
+              className="flex flex-col border-l border-[rgba(255,255,255,0.05)] bg-[#09090E] shrink-0 overflow-hidden"
+              initial={{ width: 0, opacity: 0 }}
+              animate={{ width: 304, opacity: 1 }}
+              exit={{ width: 0, opacity: 0 }}
+              transition={{ duration: 0.22, ease: [0.25, 1, 0.5, 1] }}
+              style={{ minWidth: 0 }}
+              aria-label="Meeting side panel"
+            >
+              {/* Panel tab bar */}
+              <div
+                className="flex border-b border-[rgba(255,255,255,0.05)] shrink-0"
+                role="tablist"
+                aria-label="Panel sections"
+              >
+                {PANELS.map(({ id: pid, label, icon: Icon }) => (
+                  <button
+                    key={pid}
+                    role="tab"
+                    aria-selected={activePanel === pid}
+                    onClick={() => setActivePanel(pid)}
+                    className={clsx(
+                      'flex-1 flex flex-col items-center gap-1 py-3 transition-all relative',
+                      activePanel === pid
+                        ? 'text-indigo-300'
+                        : 'text-[#2D3A4A] hover:text-[#64748B]'
+                    )}
+                    aria-label={label}
+                  >
+                    {activePanel === pid && (
+                      <motion.span
+                        layoutId="panelIndicator"
+                        className="absolute bottom-0 left-1/2 -translate-x-1/2 w-5 h-[2px] bg-indigo-500 rounded-full"
+                      />
+                    )}
+                    <Icon size={14} aria-hidden="true" />
+                    <span className="text-[9px] font-semibold">{label}</span>
+                  </button>
+                ))}
               </div>
-            </div>
-          ) : (
-            <VideoGrid participants={participants} localStream={localStream} remoteStreams={{}} />
-          )}
-        </div>
 
-        {/* Right pane: Side Panel Drawer */}
-        <div style={{
-          width: '320px', background: '#ffffff', height: '100%',
-          display: 'flex', flexDirection: 'column', borderLeft: '1px solid #1F2937'
-        }}>
-          {activePanel === 'chat' && (
-            <ChatBox messages={messages} onSendMessage={handleSendMessage} />
+              {/* Panel content */}
+              <div className="flex-1 overflow-hidden" role="tabpanel">
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={activePanel}
+                    className="h-full"
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -4 }}
+                    transition={{ duration: 0.15 }}
+                  >
+                    {activePanel === 'chat'         && <ChatBox meetingId={id ?? ''} />}
+                    {activePanel === 'participants' && <ParticipantList />}
+                    {activePanel === 'ai'           && <AIPanel meetingId={id ?? ''} />}
+                    {activePanel === 'notes'        && <NotesPanel />}
+                  </motion.div>
+                </AnimatePresence>
+              </div>
+            </motion.div>
           )}
-          {activePanel === 'participants' && (
-            <ParticipantList
-              participants={participants}
-              localUser={{ name: 'You', isHost: false }}
-              onToggleMuteParticipant={(id) => setParticipants(prev => prev.map(p => p.id === id ? { ...p, isMuted: !p.isMuted } : p))}
-              onKickParticipant={(id) => setParticipants(prev => prev.filter(p => p.id !== id))}
-            />
-          )}
-          {activePanel === 'transcript' && (
-            <TranscriptPanel transcript={transcript} isTranscribing={true} />
-          )}
-          {activePanel === 'actions' && (
-            <div style={{ padding: '16px', overflowY: 'auto', height: '100%', boxSizing: 'border-box' }}>
-              <ActionItems items={actionItems} onToggleStatus={handleToggleActionStatus} />
-            </div>
-          )}
-        </div>
+        </AnimatePresence>
       </div>
-
-      {/* Bottom Controls Bar */}
-      <Controls
-        isMuted={isMuted}
-        isVideoOff={isVideoOff}
-        isSharing={isSharing}
-        onToggleMute={handleToggleMute}
-        onToggleVideo={handleToggleVideo}
-        onToggleShare={handleToggleShare}
-        onLeave={handleLeave}
-      />
     </div>
   );
 };
