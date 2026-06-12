@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Eye, EyeOff, Zap, Mail, Lock, ArrowRight, Sparkles, Brain, Video, CheckSquare } from 'lucide-react';
+import { Eye, EyeOff, Zap, Mail, Lock, ArrowRight, Brain, Video, CheckSquare } from 'lucide-react';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { ROUTES } from '../constants';
@@ -8,6 +8,7 @@ import { setCredentials } from '../store/slices/authSlice';
 import { useAppDispatch } from '../hooks/useAppDispatch';
 import axiosClient from '../api/axiosClient';
 import Button from '../components/common/Button';
+import GoogleLoginButton from '../components/common/GoogleLoginButton';
 
 /* ── Brand panel ── */
 const BrandPanel = () => (
@@ -149,14 +150,7 @@ const Login = () => {
           </div>
 
           {/* OAuth */}
-          <button
-            type="button"
-            className="w-full flex items-center justify-center gap-2.5 py-2.5 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] text-[0.8125rem] font-medium text-[#CBD5E1] hover:bg-[rgba(255,255,255,0.06)] hover:border-[rgba(255,255,255,0.12)] transition-all mb-5"
-            aria-label="Continue with Google"
-          >
-            <GoogleIcon />
-            Continue with Google
-          </button>
+          <GoogleLoginButton label="Continue with Google" />
 
           <div className="flex items-center gap-3 mb-5">
             <div className="flex-1 h-px bg-[rgba(255,255,255,0.06)]" />

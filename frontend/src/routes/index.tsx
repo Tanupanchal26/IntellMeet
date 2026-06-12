@@ -22,6 +22,7 @@ const Teams          = lazy(() => import('../pages/Teams'));
 const Channels       = lazy(() => import('../pages/Channels'));
 const Notifications  = lazy(() => import('../pages/Notifications'));
 const NotFound       = lazy(() => import('../pages/NotFound'));
+const GoogleAuthSuccess = lazy(() => import('../pages/GoogleAuthSuccess'));
 
 const AppRoutes = () => (
   <Suspense fallback={<Loader fullPage />}>
@@ -54,6 +55,9 @@ const AppRoutes = () => (
         </Route>
         <Route path={ROUTES.MEETING} element={<MeetingRoom />} />
       </Route>
+
+      {/* Google OAuth callback */}
+      <Route path="/auth/google/success" element={<GoogleAuthSuccess />} />
 
       <Route path={ROUTES.NOT_FOUND} element={<NotFound />} />
     </Routes>
