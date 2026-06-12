@@ -7,11 +7,11 @@ IntellMeet is an AI-powered meeting collaboration platform that combines HD vide
 ```
 IntellMeet/
 │
-├── 📁 frontend/                         # React Frontend (Vite + TS)
+├── 📁 client/                           # React Frontend (Vite + TS)
 │   ├── 📁 public/                       # Static assets & index.html
 │   └── 📁 src/                          # TypeScript source files (Components, Hooks, Pages, Services, Stores)
 │
-├── 📁 backend/                          # Node.js + Express Backend
+├── 📁 server/                           # Node.js + Express Backend
 │   └── 📁 src/                          # Sockets, Models, Controllers, Services, AI Engines, Routes
 │
 ├── 📁 devops/                           # DevOps / Deployment Configs (Docker Compose, Nginx, Kubernetes, Helm)
@@ -33,14 +33,14 @@ IntellMeet/
 
 1. **Backend Server**:
    ```bash
-   cd backend
+   cd server
    npm install
    npm run dev
    ```
 
 2. **Frontend client**:
    ```bash
-   cd frontend
+   cd client
    npm install
    npm run dev
    ```

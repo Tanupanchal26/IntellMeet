@@ -27,18 +27,18 @@ jobs:
           node-version: 18
           cache: npm
           cache-dependency-path: |
-            backend/package-lock.json
-            frontend/package-lock.json
+            server/package-lock.json
+            client/package-lock.json
 
       - name: Backend — install & test
-        working-directory: backend
+        working-directory: server
         run: |
           npm ci
           npm run lint --if-present
           npm test --if-present
 
       - name: Frontend — install & build
-        working-directory: frontend
+        working-directory: client
         run: |
           npm ci
           npm run lint --if-present
@@ -74,7 +74,7 @@ jobs:
           REGISTRY:   ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG:  ${{ github.sha }}
         run: |
-          docker build -t $REGISTRY/$ECR_BACKEND:$IMAGE_TAG ./backend
+          docker build -t $REGISTRY/$ECR_BACKEND:$IMAGE_TAG ./server
           docker push $REGISTRY/$ECR_BACKEND:$IMAGE_TAG
           echo "image=$REGISTRY/$ECR_BACKEND:$IMAGE_TAG" >> $GITHUB_OUTPUT
 
@@ -84,7 +84,7 @@ jobs:
           REGISTRY:   ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG:  ${{ github.sha }}
         run: |
-          docker build -t $REGISTRY/$ECR_FRONTEND:$IMAGE_TAG ./frontend
+          docker build -t $REGISTRY/$ECR_FRONTEND:$IMAGE_TAG ./client
           docker push $REGISTRY/$ECR_FRONTEND:$IMAGE_TAG
           echo "image=$REGISTRY/$ECR_FRONTEND:$IMAGE_TAG" >> $GITHUB_OUTPUT
 
