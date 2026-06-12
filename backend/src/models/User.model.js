@@ -8,10 +8,15 @@ const STATUS_VALUES = Object.values(USER_STATUS);
 
 const userSchema = new mongoose.Schema({
   // ── Identity ───────────────────────────────────────────────────────────────
-  name:   { type: String, required: true, trim: true, minlength: 2, maxlength: 50 },
-  email:  { type: String, required: true, lowercase: true, trim: true },
-  password: { type: String, required: true, minlength: 8, select: false },
-  avatar: { type: String, default: '' },
+  name:     { type: String, required: true, trim: true, minlength: 2, maxlength: 50 },
+  email:    { type: String, required: true, lowercase: true, trim: true },
+  password: { type: String, minlength: 8, select: false },
+  avatar:   { type: String, default: '' },
+
+  // ── OAuth ──────────────────────────────────────────────────────────────────
+  googleId:      { type: String, default: null, index: true },
+  provider:      { type: String, enum: ['local', 'google'], default: 'local' },
+  emailVerified: { type: Boolean, default: false },
 
   // ── Tenant ─────────────────────────────────────────────────────────────────
   tenantId: { type: mongoose.Schema.Types.ObjectId, ref: 'Tenant', default: null, index: true },
@@ -53,7 +58,7 @@ userSchema.virtual('isLocked').get(function () {
 
 // ── Pre-save: hash password only when modified ────────────────────────────────
 userSchema.pre('save', async function (next) {
-  if (!this.isModified('password')) return next();
+  if (!this.isModified('password') || !this.password) return next();
   this.password = await bcrypt.hash(this.password, AUTH.BCRYPT_ROUNDS);
   // Invalidate all refresh tokens on password change
   if (!this.isNew) {

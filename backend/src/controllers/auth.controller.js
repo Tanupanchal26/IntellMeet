@@ -111,3 +111,4 @@ exports.changePassword = asyncHandler(async (req, res) => {
 exports.getMe = asyncHandler(async (req, res) =>
   ApiResponse.ok(res, userPayload(req.user), 'Profile retrieved')
 );
+

@@ -1,5 +1,6 @@
 const router = require('express').Router();
 
+router.use('/auth/google',   require('../googleAuth.routes'));
 router.use('/auth',          require('../auth.routes'));
 router.use('/users',         require('../user.routes'));
 router.use('/meetings',      require('../meeting.routes'));
