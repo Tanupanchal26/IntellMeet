@@ -5,12 +5,18 @@ const logger = require('../utils/logger');
 let client = null;
 
 const connectRedis = async () => {
-  client = createClient({ url: redis.url });
-
-  client.on('error', (err) => logger.error(`Redis error: ${err.message}`));
-  client.on('connect', () => logger.info('Redis connected'));
-
-  await client.connect();
+  try {
+    client = createClient({
+      url: redis.url,
+      socket: { reconnectStrategy: false },
+    });
+    client.on('error', () => {});
+    await client.connect();
+    logger.info('Redis connected');
+  } catch (err) {
+    logger.warn('Redis unavailable — running without cache/pub-sub');
+    client = null;
+  }
   return client;
 };
 
