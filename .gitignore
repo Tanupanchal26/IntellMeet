@@ -1,42 +1,4 @@
-# Dependency directories
-node_modules/
-jspm_packages/
-
-# Build outputs
-dist/
-build/
-out/
-.next/
-.serverless/
-
-# Debug and Logs
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-lerna-debug.log*
-.pnpm-debug.log*
-*.log
-
-# Environment variables files
-.env
-.env.*
-!.env.example
-*.env
-!*.env.example
-
-# IDE / Editor configuration
-.idea/
-.vscode/
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
-
-# OS metadata
-.DS_Store
-Thumbs.db
-
-# Docker
-.dockerignore
-Docker/
+# Logs
+server/logs/*.log
+server/logs/.*-audit.json
+server/logs/

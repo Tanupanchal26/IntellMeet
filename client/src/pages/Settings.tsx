@@ -1,13 +1,79 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   User, Lock, Bell, Palette, Shield, Save, CreditCard,
-  Puzzle, Brain, Trash2, ExternalLink, Check,
+  Puzzle, Brain, Trash2, ExternalLink, Check, LogOut
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 import Badge from '../components/common/Badge';
-import { useAppSelector } from '../hooks/useAppDispatch';
+import { useAppSelector, useAppDispatch } from '../hooks/useAppDispatch';
+If you want the AI to fix it, use this prompt:
+
+Fix my logout functionality.
+
+Requirement:
+
+When the user clicks the "Sign Out" button, they must be immediately redirected to the public Home page ("/").
+
+Expected flow:
+
+1. User clicks "Sign Out".
+2. Logout API executes successfully.
+3. Clear all authentication data.
+4. Clear localStorage auth tokens.
+5. Clear sessionStorage auth data.
+6. Clear user context/store state.
+7. Redirect user to "/".
+8. Replace browser history so user cannot press Back and return to protected pages.
+9. If user tries to access Dashboard, Meetings, Teams, Channels, Tasks, Analytics, Notifications, or Settings after logout, redirect them back to "/".
+10. Refreshing the browser must not restore the previous session.
+
+Implementation details:
+
+* React
+* TypeScript
+* React Router
+* Production-ready
+* Secure logout
+
+Use:
+
+navigate("/", { replace: true });
+
+after logout completes.
+
+Also update ProtectedRoute so unauthenticated users are automatically redirected to "/".
+
+Return the complete code changes required for:
+
+* Sign Out button
+* Logout handler
+* AuthContext
+* ProtectedRoute
+* Router configuration
+
+If you're coding it yourself, your logout handler should look something like:
+
+```tsx
+const handleLogout = async () => {
+  try {
+    await logout();
+
+    localStorage.clear();
+    sessionStorage.clear();
+
+    navigate("/", { replace: true });
+  } catch (error) {
+    console.error(error);
+  }
+};
+```
+
+And your protected routes should redirect unauthenticated users to `/`.
+import { clearAuth } from '../store/slices/authSlice';
+import { ROUTES, STORAGE_KEYS } from '../constants';
 import toast from 'react-hot-toast';
 import { clsx } from 'clsx';
 
@@ -71,6 +137,8 @@ const SettingRow = ({
 );
 
 const Settings = () => {
+  const navigate = useNavigate();
+  const dispatch = useAppDispatch();
   const user   = useAppSelector((s) => s.auth.user);
   const [tab,  setTab]  = useState<Tab>('profile');
   const [name, setName] = useState(user?.name ?? '');
@@ -92,6 +160,18 @@ const Settings = () => {
     setAI(a => ({ ...a, [k]: !a[k] }));
 
   const save = () => toast.success('Settings saved!');
+
+  const handleLogout = () => {
+    // Clear state and storage
+    dispatch(clearAuth());
+    localStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
+    localStorage.removeItem('im_user');
+    sessionStorage.clear();
+
+    toast.success('Signed out successfully');
+    // Redirect to public homepage and replace history
+    navigate(ROUTES.HOME, { replace: true });
+  };
 
   const tabGroups = ['Account', 'Workspace'];
 
@@ -129,6 +209,16 @@ const Settings = () => {
               ))}
             </div>
           ))}
+          
+          <div className="pt-4 mt-4 border-t border-[rgba(255,255,255,0.05)] hidden md:block">
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[0.8125rem] font-medium text-[#64748B] hover:bg-red-500/10 hover:text-red-400 transition-all text-left w-full"
+            >
+              <LogOut size={14} />
+              Sign Out
+            </button>
+          </div>
         </nav>
 
         {/* ── Content ── */}

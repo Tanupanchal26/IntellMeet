@@ -8,7 +8,7 @@ import {
 import { useAppSelector, useAppDispatch } from '../../hooks/useAppDispatch';
 import { toggleSidebar, setMobileSidebar } from '../../store/slices/uiSlice';
 import { clearAuth } from '../../store/slices/authSlice';
-import { ROUTES } from '../../constants';
+import { ROUTES, STORAGE_KEYS } from '../../constants';
 import { clsx } from 'clsx';
 import toast from 'react-hot-toast';
 
@@ -111,10 +111,17 @@ const Sidebar = () => {
   const navigate          = useNavigate();
 
   const handleLogout = () => {
+    // 1. Clear Redux Auth State
     dispatch(clearAuth());
+    // 2. Clear Browser Persistence
+    localStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
+    localStorage.removeItem('im_user');
+    sessionStorage.clear();
+    
     dispatch(setMobileSidebar(false));
-    toast.success('Signed out');
-    navigate(ROUTES.LOGIN);
+    toast.success('Signed out successfully');
+    // 3. Redirect to public home page and replace history stack
+    navigate(ROUTES.HOME, { replace: true });
   };
 
   const initial = user?.name?.charAt(0).toUpperCase() ?? 'U';

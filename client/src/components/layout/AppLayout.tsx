@@ -4,6 +4,7 @@ import Sidebar from './Sidebar';
 import TopBar from './Navbar';
 import { useAppSelector, useAppDispatch } from '../../hooks/useAppDispatch';
 import { setMobileSidebar } from '../../store/slices/uiSlice';
+import { ROUTES } from '../../constants';
 
 const PAGE_TITLES: Record<string, string> = {
   '/dashboard':     'Dashboard',
@@ -30,7 +31,7 @@ const AppLayout = () => {
   const dispatch          = useAppDispatch();
   const { pathname }      = useLocation();
 
-  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (!isAuthenticated) return <Navigate to={ROUTES.HOME} replace />;
 
   const title = PAGE_TITLES[pathname] ?? '';
 

@@ -1,12 +1,17 @@
 import { useState } from 'react';
-import { useAppSelector } from '../hooks/useAppDispatch';
+import { useNavigate } from 'react-router-dom';
+import { useAppSelector, useAppDispatch } from '../hooks/useAppDispatch';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 import Badge from '../components/common/Badge';
-import { Save, Video, Brain, CheckSquare } from 'lucide-react';
+import { Save, Video, Brain, CheckSquare, LogOut } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { clearAuth } from '../store/slices/authSlice';
+import { ROUTES, STORAGE_KEYS } from '../constants';
 
 const Profile = () => {
+  const navigate = useNavigate();
+  const dispatch = useAppDispatch();
   const user = useAppSelector((s) => s.auth.user);
   const [name, setName] = useState(user?.name || '');
 
@@ -16,9 +21,26 @@ const Profile = () => {
     { label: 'Tasks Done', value: '47', icon: CheckSquare, color: 'text-green-400', bg: 'bg-green-500/10' },
   ];
 
+  const handleLogout = () => {
+    // Clear state and storage
+    dispatch(clearAuth());
+    localStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
+    localStorage.removeItem('im_user');
+    sessionStorage.clear();
+    
+    toast.success('Signed out successfully');
+    // Redirect to public homepage and replace history to prevent "Back" button access
+    navigate(ROUTES.HOME, { replace: true });
+  };
+
   return (
     <div className="flex flex-col gap-5 animate-fade-in max-w-2xl">
-      <h1 className="text-2xl font-bold text-[var(--color-text)]">Profile</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-[var(--color-text)]">Profile</h1>
+        <Button variant="ghost" size="sm" onClick={handleLogout} className="text-[var(--color-text-muted)] hover:text-red-500 gap-2">
+          <LogOut size={14} /> Sign out
+        </Button>
+      </div>
 
       <Card className="flex items-center gap-5">
         <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[var(--color-primary)] to-purple-500 flex items-center justify-center text-white text-3xl font-bold flex-shrink-0">
