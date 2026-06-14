@@ -19,15 +19,6 @@ const COLS: { id: Status; label: string; color: string }[] = [
 ];
 const PRIORITY_V: Record<string, 'danger' | 'warning' | 'info'> = { high: 'danger', medium: 'warning', low: 'info' };
 
-const MOCK_TASKS: Task[] = [
-  { _id: '1', title: 'Design new onboarding flow', status: 'todo', priority: 'high', assignedTo: { name: 'Sarah K.', email: 'sarah@co.com' }, dueDate: '2025-01-20', createdAt: '' },
-  { _id: '2', title: 'Implement WebRTC reconnection', status: 'in-progress', priority: 'high', assignedTo: { name: 'Mike R.', email: 'mike@co.com' }, dueDate: '2025-01-18', createdAt: '' },
-  { _id: '3', title: 'AI summary API integration', status: 'in-progress', priority: 'medium', createdAt: '' },
-  { _id: '4', title: 'Write unit tests for auth', status: 'todo', priority: 'medium', createdAt: '' },
-  { _id: '5', title: 'Deploy to staging', status: 'done', priority: 'low', createdAt: '' },
-  { _id: '6', title: 'Setup CI/CD pipeline', status: 'done', priority: 'medium', createdAt: '' },
-];
-
 const TaskCard = ({ task, onDelete }: { task: Task; onDelete: (id: string) => void }) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task._id });
   return (
@@ -66,34 +57,64 @@ const TaskCard = ({ task, onDelete }: { task: Task; onDelete: (id: string) => vo
 };
 
 const Tasks = () => {
-  const [tasks, setTasks] = useState<Task[]>(MOCK_TASKS);
+  const qc = useQueryClient();
   const [showCreate, setShowCreate] = useState(false);
   const [newTask, setNewTask] = useState({ title: '', priority: 'medium', status: 'todo' as Status });
   const [activeId, setActiveId] = useState<string | null>(null);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
+  // Real-time task synchronization
+  const { data: tasks = [], isLoading } = useQuery({
+    queryKey: ['tasks'],
+    queryFn: () => taskService.list().then((r: any) => r.data),
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<Task> }) => taskService.update(id, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['tasks'] }),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => taskService.delete(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['tasks'] });
+      toast.success('Task removed');
+    },
+  });
+
+  const createMutation = useMutation({
+    mutationFn: (data: any) => taskService.create(data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['tasks'] });
+      toast.success('Task created successfully');
+      setNewTask({ title: '', priority: 'medium', status: 'todo' });
+      setShowCreate(false);
+    },
+  });
+
   const handleDragEnd = ({ active, over }: any) => {
     if (!over || active.id === over.id) { setActiveId(null); return; }
     const colId = over.id as Status;
     if (COLS.some(c => c.id === colId)) {
-      setTasks(t => t.map(task => task._id === active.id ? { ...task, status: colId } : task));
+      updateMutation.mutate({ id: active.id, data: { status: colId } });
     }
     setActiveId(null);
   };
 
-  const deleteTask = (id: string) => setTasks(t => t.filter(task => task._id !== id));
-
   const addTask = () => {
     if (!newTask.title.trim()) return;
-    const t: Task = { _id: Date.now().toString(), title: newTask.title, status: newTask.status, priority: newTask.priority as any, createdAt: new Date().toISOString() };
-    setTasks(prev => [...prev, t]);
-    toast.success('Task created!');
-    setNewTask({ title: '', priority: 'medium', status: 'todo' });
-    setShowCreate(false);
+    createMutation.mutate(newTask);
   };
 
   const activeTask = activeId ? tasks.find(t => t._id === activeId) : null;
+
+  if (isLoading) return (
+    <div className="flex flex-col gap-8 h-full">
+      <div className="h-8 w-48 bg-white/5 animate-pulse rounded-lg" />
+      <div className="grid grid-cols-3 gap-6 flex-1"><div className="bg-white/5 rounded-2xl h-96 animate-pulse" /><div className="bg-white/5 rounded-2xl h-96 animate-pulse" /><div className="bg-white/5 rounded-2xl h-96 animate-pulse" /></div>
+    </div>
+  );
 
   return (
     <div className="flex flex-col gap-5 animate-fade-in h-full">
@@ -118,7 +139,7 @@ const Tasks = () => {
                 </div>
                 <SortableContext id={col.id} items={colTasks.map(t => t._id)} strategy={verticalListSortingStrategy}>
                   <div className={`kanban-col flex flex-col gap-2 bg-[var(--color-surface)]/50 rounded-xl p-2 border border-dashed border-[var(--color-border)] min-h-[200px]`}>
-                    {colTasks.map(task => <TaskCard key={task._id} task={task} onDelete={deleteTask} />)}
+                    {colTasks.map(task => <TaskCard key={task._id} task={task} onDelete={(id) => deleteMutation.mutate(id)} />)}
                     {colTasks.length === 0 && (
                       <div className="flex items-center justify-center h-24 text-xs text-[var(--color-text-dim)]">
                         Drop tasks here
@@ -159,7 +180,7 @@ const Tasks = () => {
           </div>
           <div className="flex gap-3">
             <Button variant="secondary" className="flex-1" onClick={() => setShowCreate(false)}>Cancel</Button>
-            <Button className="flex-1" onClick={addTask}>Create Task</Button>
+            <Button className="flex-1" onClick={addTask} loading={createMutation.isPending}>Create Task</Button>
           </div>
         </div>
       </Modal>

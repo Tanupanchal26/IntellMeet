@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Plus, Hash, Calendar, Clock, Video, ArrowRight, Users } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { meetingService } from '../services/meeting.service';
-import { MEETING_ROUTE } from '../utils/constants';
+import { MEETING_ROUTE } from '../constants';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 import Badge from '../components/common/Badge';
@@ -12,12 +12,6 @@ import toast from 'react-hot-toast';
 
 const fmt = (iso: string) => new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 
-const MOCK_MEETINGS = [
-  { _id: 'm1', title: 'Q4 Product Review', roomId: 'room-abc', isActive: true,  startedAt: new Date().toISOString() },
-  { _id: 'm2', title: 'Design System Sync', roomId: 'room-def', isActive: false, startedAt: new Date(Date.now() - 86400000).toISOString() },
-  { _id: 'm3', title: 'Backend Architecture', roomId: 'room-ghi', isActive: false, startedAt: new Date(Date.now() - 172800000).toISOString() },
-];
-
 const Lobby = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -25,6 +19,13 @@ const Lobby = () => {
   const [title, setTitle] = useState('');
   const [joinId, setJoinId] = useState('');
   const qc = useQueryClient();
+
+  // Wire to real meeting service
+  const { data: meetingsResponse, isLoading } = useQuery({
+    queryKey: ['meetings'],
+    queryFn: () => meetingService.getAll({ limit: 10 }).then((r: any) => r.data),
+  });
+  const meetings = meetingsResponse?.data || [];
 
   const createMutation = useMutation({
     mutationFn: () => meetingService.create({ title: title || 'Quick Meeting' }) as Promise<any>,
@@ -98,24 +99,30 @@ const Lobby = () => {
       <div>
         <h2 className="font-semibold text-[var(--color-text)] mb-3">Recent Meetings</h2>
         <div className="flex flex-col gap-2">
-          {MOCK_MEETINGS.map(m => (
-            <div key={m._id} className="flex items-center gap-4 p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] hover:border-[var(--color-primary)]/30 transition-all cursor-pointer" onClick={() => navigate(MEETING_ROUTE(m._id))}>
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${m.isActive ? 'bg-green-500/15' : 'bg-[var(--color-surface-2)]'}`}>
-                <Video size={16} className={m.isActive ? 'text-green-400' : 'text-[var(--color-text-muted)]'} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-[var(--color-text)] truncate">{m.title}</p>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <Clock size={11} className="text-[var(--color-text-dim)]" />
-                  <span className="text-xs text-[var(--color-text-dim)]">{fmt(m.startedAt)}</span>
+          {isLoading ? (
+            <div className="py-12 text-center text-sm text-[var(--color-text-dim)]">Loading sessions...</div>
+          ) : meetings.length === 0 ? (
+            <div className="py-12 text-center text-sm text-[var(--color-text-dim)]">No recent meetings found</div>
+          ) : (
+            meetings.map((m: any) => (
+              <div key={m._id} className="flex items-center gap-4 p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] hover:border-[var(--color-primary)]/30 transition-all cursor-pointer" onClick={() => navigate(MEETING_ROUTE(m._id))}>
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${m.isActive ? 'bg-green-500/15' : 'bg-[var(--color-surface-2)]'}`}>
+                  <Video size={16} className={m.isActive ? 'text-green-400' : 'text-[var(--color-text-muted)]'} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-[var(--color-text)] truncate">{m.title}</p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <Clock size={11} className="text-[var(--color-text-dim)]" />
+                    <span className="text-xs text-[var(--color-text-dim)]">{fmt(m.startedAt)}</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  {m.isActive ? <Badge variant="success">Live</Badge> : <Badge variant="default">Ended</Badge>}
+                  <Button variant="ghost" size="sm" className="gap-1.5">Join <ArrowRight size={12} /></Button>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                {m.isActive ? <Badge variant="success">Live</Badge> : <Badge variant="default">Ended</Badge>}
-                <Button variant="ghost" size="sm" className="gap-1.5">Join <ArrowRight size={12} /></Button>
-              </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
 
