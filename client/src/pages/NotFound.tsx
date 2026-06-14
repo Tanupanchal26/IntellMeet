@@ -2,7 +2,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Home, ArrowLeft, Zap } from 'lucide-react';
 import Button from '../components/common/Button';
-import { ROUTES } from '../utils/constants';
+import { ROUTES } from '../constants';
 
 const NotFound = () => {
   const navigate = useNavigate();
